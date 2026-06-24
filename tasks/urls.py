@@ -10,4 +10,9 @@ urlpatterns = [
 
     # Mengarah ke halaman detail materi per-kursus (detail.html) dengan context lengkap
     path('course/<int:course_id>/', views.detail, name='course_detail'),
+
+    # Login / Register / Logout untuk pengunjung website (session-based)
+    path('login/', views.login_page, name='login_page'),
+    path('register/', views.register_page, name='register_page'),
+    path('logout/', views.logout_view, name='logout_view'),
 ]

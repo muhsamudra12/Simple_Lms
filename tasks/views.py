@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Course, Comment
+from .models import Course, Comment, User
 from django.contrib import messages
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.db.models import Avg, Max, Min, Count
@@ -109,3 +110,73 @@ def stats_view(request):
 def courses_page(request):
     # Halaman Grid Card kursus (versi tampilan terpisah, dipakai manual / belum dirutekan)
     return render(request, 'tasks/courses.html')
+
+
+# ─────────────────────────────────────────────
+# 🔐 LOGIN / REGISTER / LOGOUT (WEBSITE)
+# Session-based, terpisah dari JWT yang dipakai endpoint API
+# (/api/v2/auth/...) — keduanya sengaja independen: API dipakai oleh
+# Postman/aplikasi eksternal dengan token, sementara website memakai
+# session Django biasa supaya navbar bisa langsung tahu status login
+# tanpa perlu JS menyimpan token di localStorage.
+# ─────────────────────────────────────────────
+def login_page(request):
+    if request.session.get('user_id'):
+        return redirect('index')
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+
+        # Rate-limit sederhana biar nggak bisa di-brute-force lewat form web
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        throttle_key = f"login_throttle_{ip}"
+        attempts = cache.get(throttle_key, 0)
+        if attempts >= 5:
+            messages.error(request, "Terlalu banyak percobaan login. Coba lagi dalam 1 menit.")
+            return render(request, 'tasks/login.html')
+
+        user = User.objects.filter(username=username).first()
+        if user and check_password(password, user.password):
+            request.session['user_id'] = user.id
+            cache.delete(throttle_key)
+            messages.success(request, f"Selamat datang kembali, {user.fullname}!")
+            return redirect('index')
+        else:
+            cache.set(throttle_key, attempts + 1, 60)
+            messages.error(request, "Username atau password salah.")
+
+    return render(request, 'tasks/login.html')
+
+
+def register_page(request):
+    if request.session.get('user_id'):
+        return redirect('index')
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        fullname = request.POST.get('fullname', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+
+        if not all([username, fullname, email, password]):
+            messages.error(request, "Semua field wajib diisi.")
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, "Username sudah digunakan, coba yang lain.")
+        else:
+            User.objects.create(
+                username=username,
+                fullname=fullname,
+                email=email,
+                password=make_password(password),
+            )
+            messages.success(request, "Registrasi berhasil! Silakan login.")
+            return redirect('login_page')
+
+    return render(request, 'tasks/register.html')
+
+
+def logout_view(request):
+    request.session.pop('user_id', None)
+    messages.success(request, "Kamu berhasil logout.")
+    return redirect('index')
