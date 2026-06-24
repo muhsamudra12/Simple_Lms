@@ -31,11 +31,27 @@ api = NinjaAPI(version="2", title="Simple LMS API v2", description="REST API Kom
 # Dipindah ke atas (sebelum endpoint apapun memakainya) supaya bisa
 # dipasang di endpoint Authentication yang rawan brute-force.
 # ─────────────────────────────────────────────
+def get_client_ip(request):
+    """
+    Di belakang reverse proxy (Railway, dll), REMOTE_ADDR yang Django lihat
+    adalah IP proxy-nya sendiri — BUKAN IP asli client — dan beberapa
+    infrastruktur proxy bisa memakai IP yang berbeda-beda tiap request,
+    yang membuat rate-limit berbasis REMOTE_ADDR gagal total (setiap
+    request dianggap "client baru"). Header X-Forwarded-For yang di-set
+    proxy berisi IP asli client (elemen pertama dari daftar, kalau ada
+    beberapa proxy yang dilewati) dan harus diprioritaskan kalau ada.
+    """
+    forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '127.0.0.1')
+
+
 def simple_throttle(rate_limit=10, period=60):
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
-            ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+            ip = get_client_ip(request)
             key = f"throttle_{ip}_{func.__name__}"
             requests = cache.get(key, [])
             now = time.time()
