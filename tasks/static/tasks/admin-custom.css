@@ -180,6 +180,7 @@ body.login {
    pekat. Di-styling ulang manual biar pasti senada brand. ── */
 .object-tools {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
 }
@@ -194,13 +195,19 @@ body.login {
 .object-tools a.export_link,
 .object-tools a.viewlink,
 .object-tools a.changelink {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   background: #64748b !important;
   color: #ffffff !important;
   border-radius: 8px;
   padding: 8px 16px;
+  min-height: 38px;
   font-weight: 600;
+  font-size: 0.8rem;
   text-decoration: none !important;
+  box-sizing: border-box;
 }
 
 .object-tools a.button:hover,
@@ -215,6 +222,22 @@ body.login {
 
 .object-tools a.addlink:hover {
   background: #1d4ed8 !important;
+}
+
+/* Di layar sempit, biarkan tombol-tombol jadi full-width satu kolom
+   daripada saling squeeze/wrap teks jadi 2 baris yang bikin tinggi
+   beda-beda. */
+@media (max-width: 575.98px) {
+  .object-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .object-tools a.button,
+  .object-tools a.addlink,
+  .object-tools a.import_link,
+  .object-tools a.export_link {
+    width: 100%;
+  }
 }
 
 /* ── Sidebar nav (Django 5+) ──────────────────────────────── */

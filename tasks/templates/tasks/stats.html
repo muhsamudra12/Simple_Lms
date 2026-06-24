@@ -343,6 +343,27 @@
         align-items: center;
         gap: 8px;
       }
+      /* Tabel ranking punya 6 kolom — di layar HP/tablet nggak akan pernah
+         cukup dipaksa muat, jadi dibuat scroll horizontal (sebelumnya
+         overflow:hidden di .courses-table-card malah memotong kolom
+         tanpa ada cara untuk melihat sisanya). */
+      .table-scroll-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .scroll-hint-mobile {
+        display: none;
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        padding: 8px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+      }
+      @media (max-width: 767.98px) {
+        .scroll-hint-mobile { display: block; }
+        table.ranking-table { min-width: 640px; }
+      }
       table.ranking-table {
         width: 100%;
         border-collapse: collapse;
@@ -546,6 +567,8 @@
           <div class="courses-table-header">
             <i class="bi bi-list-ol"></i> Daftar Semua Kursus
           </div>
+          <div class="scroll-hint-mobile"><i class="bi bi-arrow-left-right"></i> Geser tabel ke kanan untuk lihat semua kolom</div>
+          <div class="table-scroll-wrap">
           <table class="ranking-table">
             <thead>
               <tr>
@@ -584,6 +607,7 @@
               {% endfor %}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
