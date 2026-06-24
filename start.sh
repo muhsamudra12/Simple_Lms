@@ -21,6 +21,9 @@ fi
 echo "Menjalankan migrasi database..."
 python manage.py migrate --noinput
 
+echo "Menyiapkan tabel cache (untuk fitur throttling)..."
+python manage.py createcachetable
+
 echo "Mengumpulkan static files..."
 python manage.py collectstatic --noinput
 

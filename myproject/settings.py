@@ -165,6 +165,21 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# CACHES — dipakai untuk fitur throttling (rate-limit) di tasks/api.py.
+# Default Django (LocMemCache) tersimpan di MEMORI PER-PROCESS — kalau
+# Gunicorn jalan dengan lebih dari 1 worker (otomatis terjadi kalau
+# platform hosting set env var WEB_CONCURRENCY > 1), setiap worker punya
+# cache-nya sendiri-sendiri, jadi hitungan rate-limit kepecah dan TIDAK
+# PERNAH benar-benar memblokir. DatabaseCache dipakai sebagai gantinya
+# supaya counter rate-limit dibagi bersama oleh semua worker (dan tahan
+# kalau container restart), tanpa perlu infrastruktur tambahan (Redis dkk).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache_table",
+    }
+}
+
 # WhiteNoise — serve static file (termasuk admin-custom.css) langsung dari
 # Django tanpa perlu web server terpisah seperti Nginx. Wajib jalankan
 # `python manage.py collectstatic` sebelum deploy ke hosting.
