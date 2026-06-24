@@ -1,0 +1,19 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | LMS Academy Admin{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+  <a href="{% url 'admin:index' %}">
+    🎓 LMS <span class="accent">Academy</span> <span class="admin-sub">Admin Panel</span>
+  </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'tasks/admin-custom.css' %}">
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

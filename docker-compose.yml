@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: uas_lms_db
+    volumes:
+      - uas_postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=lms_db
+      - POSTGRES_USER=lms_user
+      - POSTGRES_PASSWORD=lms_password
+    networks:
+      - uas_lms_network
+
+  web:
+    build: .
+    container_name: uas_lms_web
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_ENGINE=postgres
+      - DB_NAME=lms_db
+      - DB_USER=lms_user
+      - DB_PASS=lms_password
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+    networks:
+      - uas_lms_network
+
+networks:
+  uas_lms_network:
+    driver: bridge
+
+volumes:
+  uas_postgres_data:

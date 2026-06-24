@@ -1,0 +1,29 @@
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── Django ───────────────────────────────────────────────
+# Database lokal — JANGAN sampai ikut commit. Berisi data user
+# (sekalipun password sekarang sudah di-hash, tetap bukan untuk publik).
+db.sqlite3
+db.sqlite3-journal
+db/
+
+# Hasil `collectstatic` — di-generate ulang otomatis saat deploy,
+# tidak perlu ikut di commit.
+staticfiles/
+
+# ── Secrets (PENTING — project ini "open source", jangan sampai
+#    key & secret ikut ke-push ke repo publik) ─────────────
+.env
+.env.*
+jwt-signing.pem
+jwt-signing.pub
+
+# ── Editor / OS ──────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store

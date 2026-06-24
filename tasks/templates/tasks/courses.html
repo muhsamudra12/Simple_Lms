@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LMS Academy | Katalog Kursus</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background-color: #f0f4ff;
+      }
+      .course-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .course-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 24px -10px rgba(10, 15, 44, 0.15);
+      }
+    </style>
+  </head>
+  <body class="text-[#0f172a] antialiased min-h-screen flex flex-col">
+    <nav
+      class="bg-[#0a0f2c] text-white shadow-md sticky top-0 z-50 border-b border-[#141a3d]"
+    >
+      <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-[#0a0f2c] font-black text-xl shadow-md shadow-amber-500/20"
+          >
+            <i class="fa-solid fa-graduation-cap text-lg"></i>
+          </div>
+          <div>
+            <span class="text-xl font-extrabold tracking-tight block"
+              >LMS <span class="text-amber-400">Academy</span></span
+            >
+            <span
+              class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase"
+              >Platform Belajar Server-Side</span
+            >
+          </div>
+        </div>
+
+        <div
+          class="hidden md:flex items-center gap-6 text-xs font-bold uppercase tracking-wider text-slate-300"
+        >
+          <a href="/" class="text-amber-400"
+            ><i class="fa-solid fa-house mr-1"></i> Beranda</a
+          >
+          <a href="/stats/" class="hover:text-amber-400 transition-colors"
+            ><i class="fa-solid fa-chart-bar mr-1"></i> Statistik</a
+          >
+          <a
+            href="/silk/"
+            target="_blank"
+            class="text-sky-400 hover:text-sky-300 transition-colors"
+            ><i class="fa-solid fa-flask mr-1"></i> Silk Profiler</a
+          >
+          <a
+            href="/api/v1/docs"
+            target="_blank"
+            class="text-emerald-400 hover:text-emerald-300 transition-colors"
+            ><i class="fa-solid fa-code mr-1"></i> Swagger Docs</a
+          >
+          <a
+            href="/admin/"
+            target="_blank"
+            class="bg-amber-500 hover:bg-amber-600 text-[#0a0f2c] font-bold px-4 py-2 rounded-xl normal-case transition-all shadow-xs"
+          >
+            <i class="fa-solid fa-user-shield mr-1"></i> Admin Panel
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <section
+      class="bg-gradient-to-b from-[#0a0f2c] to-[#141a3d] text-white py-14 px-4 text-center relative border-b border-[#141a3d]"
+    >
+      <div class="max-w-3xl mx-auto relative z-10">
+        <span
+          class="inline-block bg-amber-500/10 text-amber-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-amber-500/20 uppercase tracking-widest mb-3"
+        >
+          Live Data REST API Engine
+        </span>
+        <h2
+          class="text-2xl md:text-3xl font-extrabold tracking-tight text-white mb-3"
+        >
+          Kuasai Skill Terbaru Bersama Instruktur Berpengalaman
+        </h2>
+        <p
+          class="text-xs md:text-sm text-slate-300/90 max-w-xl mx-auto font-light mb-8 leading-relaxed"
+        >
+          Mulai pembelajaran secara fleksibel dengan pemanfaatan arsitektur data
+          Grid Card terotomatisasi.
+        </p>
+
+        <div class="max-w-xl mx-auto relative shadow-2xl rounded-2xl">
+          <span
+            class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400"
+          >
+            <i class="fa-solid fa-magnifying-glass text-sm"></i>
+          </span>
+          <input
+            type="text"
+            id="searchInput"
+            oninput="handleSearch()"
+            placeholder="Cari materi kuliah yang kamu inginkan..."
+            class="w-full pl-11 pr-24 py-3.5 bg-white/5 border border-white/10 text-white rounded-2xl focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:bg-white focus:text-[#0a0f2c] font-medium placeholder-slate-400 text-sm transition-all shadow-inner"
+          />
+          <button
+            onclick="handleSearch()"
+            class="absolute right-2 top-2 bottom-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 text-xs rounded-xl transition-all shadow-md"
+          >
+            Cari
+          </button>
+        </div>
+
+        <div
+          class="flex items-center justify-center gap-12 mt-8 text-center border-t border-white/10 pt-6 max-w-md mx-auto"
+        >
+          <div>
+            <div id="statTotal" class="text-xl font-extrabold text-amber-400">
+              0
+            </div>
+            <div
+              class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5"
+            >
+              Materi Kelas
+            </div>
+          </div>
+          <div>
+            <div class="text-xl font-extrabold text-white">100%</div>
+            <div
+              class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5"
+            >
+              Sinkron API
+            </div>
+          </div>
+          <div>
+            <div class="text-xl font-extrabold text-white">
+              <i class="fa-solid fa-infinity"></i>
+            </div>
+            <div
+              class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5"
+            >
+              Akses Kuliah
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full">
+      <div
+        class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8"
+      >
+        <div>
+          <span
+            class="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 uppercase tracking-wider"
+            >Katalog Kelas</span
+          >
+          <h3 class="text-xl font-extrabold text-[#0a0f2c] tracking-tight mt-1">
+            Pilih Kursus Favoritmu
+          </h3>
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="relative w-full sm:w-48">
+            <select
+              id="sortSelect"
+              onchange="handleSort()"
+              class="w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 transition-all shadow-xs"
+            >
+              <option value="id">ID Terkecil (Awal)</option>
+              <option value="-id">ID Terbesar (Terbaru)</option>
+              <option value="name">Nama Kursus (A-Z)</option>
+              <option value="price">Harga Terendah</option>
+              <option value="-price">Harga Tertinggi</option>
+            </select>
+            <span
+              class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 pointer-events-none"
+            >
+              <i class="fa-solid fa-chevron-down text-[10px]"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="coursesGrid"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
+        <div
+          class="col-span-full py-20 flex flex-col items-center justify-center gap-3"
+        >
+          <i
+            class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-600"
+          ></i>
+          <p class="text-sm font-semibold text-slate-500">
+            Menghubungkan data komponen...
+          </p>
+        </div>
+      </div>
+
+      <div
+        class="mt-12 pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4"
+      >
+        <p class="text-xs font-semibold text-slate-400">
+          Halaman Aktif:
+          <span id="currentPageLabel" class="font-bold text-blue-600">1</span>
+        </p>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button
+            id="prevBtn"
+            onclick="changePage(-1)"
+            disabled
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all shadow-xs"
+          >
+            <i class="fa-solid fa-chevron-left text-[10px]"></i> Sebelumnya
+          </button>
+          <button
+            id="nextBtn"
+            onclick="changePage(1)"
+            disabled
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all shadow-xs"
+          >
+            Selanjutnya <i class="fa-solid fa-chevron-right text-[10px]"></i>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <footer
+      class="bg-[#0a0f2c] text-slate-400 text-center py-6 text-xs border-t border-[#141a3d] mt-auto"
+    >
+      &copy; 2026 LMS Academy &mdash; Programmer: Samudra. All rights reserved.
+    </footer>
+
+    <script>
+      let currentPage = 1;
+      const pageSize = 5;
+      let currentSearch = "";
+      let currentSort = "id";
+
+      async function fetchCourses() {
+        const gridContainer = document.getElementById("coursesGrid");
+        // Menembak /api/v1/ agar langsung sinkron dengan router Django aktif kamu
+        let url = `/api/v1/courses?page=${currentPage}&sort_by=${currentSort}`;
+        if (currentSearch)
+          url += `&search=${encodeURIComponent(currentSearch)}`;
+
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error("Gagal memuat API");
+
+          const data = await response.json();
+          renderGrid(data.items || []);
+          updatePagination(data.count || 0);
+        } catch (error) {
+          console.error("API Fetching Error:", error);
+          gridContainer.innerHTML = `
+                    <div class="col-span-full py-14 bg-rose-50 border border-rose-100 rounded-2xl text-center p-6">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl text-rose-500 mb-2"></i>
+                        <h4 class="font-bold text-rose-900 text-sm">Gagal Menghubungkan Komponen API</h4>
+                        <p class="text-xs text-rose-600/80 mt-0.5">Pastikan server localhost:8000 berjalan aktif.</p>
+                    </div>
+                `;
+        }
+      }
+
+      function renderGrid(courses) {
+        const gridContainer = document.getElementById("coursesGrid");
+        gridContainer.innerHTML = "";
+
+        if (courses.length === 0) {
+          gridContainer.innerHTML = `
+                    <div class="col-span-full py-16 text-center text-slate-400">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2"></i>
+                        <p class="text-sm font-medium">Materi kursus tidak ditemukan.</p>
+                    </div>
+                `;
+          return;
+        }
+
+        courses.forEach((course) => {
+          const rupiahFormat = new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            maximumFractionDigits: 0,
+          }).format(course.price);
+
+          const teacherName =
+            course.teacher && course.teacher.fullname
+              ? course.teacher.fullname
+              : "Dosen Pengampu";
+          const initialName = teacherName.charAt(0).toUpperCase();
+
+          // ACTION TRIGGER: Tombol 'Buka Materi' menunjuk ke /course/id/ sesuai tasks/urls.py
+          gridContainer.innerHTML += `
+                    <div class="bg-white rounded-2xl border border-slate-200/70 overflow-hidden shadow-xs course-card flex flex-col">
+                        <div class="relative bg-slate-100 h-44 w-full overflow-hidden shrink-0">
+                            <span class="absolute top-3 left-3 bg-[#2563eb] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider z-10 shadow-sm">
+                                ${course.category || "Umum"}
+                            </span>
+                            <img src="${course.image_url}" alt="Cover" onerror="this.src='https://via.placeholder.com/600x400?text=No+Image'"
+                                 class="w-full h-full object-cover">
+                        </div>
+
+                        <div class="p-5 flex flex-col flex-1">
+                            <h4 class="font-extrabold text-[#0a0f2c] text-base leading-snug line-clamp-2 min-h-[44px]" title="${course.name}">
+                                ${course.name}
+                            </h4>
+                            
+                            <p class="text-xs text-slate-400 line-clamp-2 mt-2 font-medium flex-1" title="${course.description}">
+                                ${course.description || "Tidak ada deskripsi singkat."}
+                            </p>
+
+                            <div class="mt-4 mb-2">
+                                <a href="/course/${course.id}/" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#2563eb] hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm">
+                                    Buka Materi <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                </a>
+                            </div>
+
+                            <div class="mt-2 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 bg-blue-50 border border-blue-100 rounded-full flex items-center justify-center text-blue-600 font-extrabold text-xs">
+                                        ${initialName}
+                                    </div>
+                                    <span class="text-[11px] font-bold text-slate-600 truncate max-w-[120px]">${teacherName}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[9px] text-[#64748b] block font-bold uppercase tracking-wider">Harga Kelas</span>
+                                    <span class="text-sm font-black text-emerald-600 tracking-tight">${rupiahFormat}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+        });
+      }
+
+      function changePage(direction) {
+        currentPage += direction;
+        document.getElementById("currentPageLabel").innerText = currentPage;
+        fetchCourses();
+      }
+
+      function updatePagination(totalCount) {
+        document.getElementById("statTotal").innerText = totalCount;
+        const totalPages = Math.ceil(totalCount / pageSize);
+        document.getElementById("prevBtn").disabled = currentPage === 1;
+        document.getElementById("nextBtn").disabled =
+          currentPage >= totalPages || totalPages === 0;
+      }
+
+      let searchTimeout;
+      function handleSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          currentSearch = document.getElementById("searchInput").value;
+          currentPage = 1;
+          document.getElementById("currentPageLabel").innerText = 1;
+          fetchCourses();
+        }, 300);
+      }
+
+      function handleSort() {
+        currentSort = document.getElementById("sortSelect").value;
+        currentPage = 1;
+        document.getElementById("currentPageLabel").innerText = 1;
+        fetchCourses();
+      }
+
+      document.addEventListener("DOMContentLoaded", fetchCourses);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Materi: {{ course.name }}</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --navy: #0a0f2c;
+        --navy-mid: #141a3d;
+        --blue: #2563eb;
+        --blue-light: #3b82f6;
+        --accent: #f59e0b;
+        --accent-light: #fcd34d;
+        --surface: #f0f4ff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --radius: 18px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        background-color: var(--surface);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--text-main);
+        margin: 0;
+      }
+
+      /* ── NAVBAR ── */
+      .navbar {
+        background: var(--navy);
+        padding: 14px 0;
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      }
+      .navbar-brand {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.4rem;
+        color: white !important;
+        text-decoration: none;
+      }
+      .navbar-brand span { color: var(--accent); }
+      .btn-back {
+        background: rgba(255,255,255,0.1);
+        color: white !important;
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 9px;
+        padding: 7px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-back:hover { background: rgba(255,255,255,0.18); }
+      .course-title-nav {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.9rem;
+        font-weight: 600;
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* ── FLASH MESSAGES ── */
+      .flash-area {
+        margin-top: 20px;
+      }
+      .alert-custom {
+        border: none;
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .alert-success-custom {
+        background: #f0fdf4;
+        color: #15803d;
+        border-left: 4px solid #22c55e;
+      }
+      .alert-error-custom {
+        background: #fef2f2;
+        color: #b91c1c;
+        border-left: 4px solid #ef4444;
+      }
+
+      /* ── VIDEO CARD ── */
+      .video-card {
+        background: white;
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 12px rgba(10,15,44,0.06);
+      }
+      .video-header {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .video-header h5 {
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .video-header .play-icon {
+        width: 30px;
+        height: 30px;
+        background: var(--blue);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+      }
+      .video-desc {
+        padding: 18px 20px;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        border-top: 1px solid #f1f5f9;
+      }
+      .video-desc h6 {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+
+      /* ── SIDEBAR ── */
+      .sidebar {
+        position: sticky;
+        top: 80px;
+      }
+      .info-card {
+        background: white;
+        border-radius: var(--radius);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(10,15,44,0.06);
+      }
+      .info-card-header {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        padding: 20px;
+        color: white;
+      }
+      .info-card-header h5 {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.2rem;
+        margin: 0 0 4px;
+      }
+      .info-card-header p {
+        font-size: 0.78rem;
+        color: rgba(255,255,255,0.6);
+        margin: 0;
+      }
+      .info-body { padding: 20px; }
+      .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-bottom: 16px;
+      }
+      .info-row label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+      }
+      .info-row span {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+      .badge-cat {
+        display: inline-block;
+        background: #eff6ff;
+        color: var(--blue);
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+      }
+
+      /* Tombol Selesaikan */
+      .btn-complete {
+        width: 100%;
+        padding: 13px;
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.2s, transform 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .btn-complete:hover { opacity: 0.9; transform: scale(1.02); }
+
+      /* ── KOMENTAR ── */
+      .comment-section {
+        margin-top: 32px;
+      }
+      .section-heading {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.5rem;
+        color: var(--text-main);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .section-heading .count-badge {
+        background: var(--blue);
+        color: white;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 20px;
+      }
+
+      /* Form komentar */
+      .comment-form-card {
+        background: white;
+        border-radius: var(--radius);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 12px rgba(10,15,44,0.06);
+      }
+      .comment-form-header {
+        background: linear-gradient(135deg, var(--blue), var(--blue-light));
+        padding: 14px 20px;
+        color: white;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .comment-form-body { padding: 20px; }
+      .form-label-custom {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        display: block;
+      }
+      .form-control-custom {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.875rem;
+        color: var(--text-main);
+        outline: none;
+        transition: border-color 0.2s;
+        background: #fafbff;
+      }
+      .form-control-custom:focus { border-color: var(--blue); background: white; }
+      .form-control-custom::placeholder { color: #b0bec5; }
+      textarea.form-control-custom { resize: vertical; min-height: 100px; }
+      .btn-submit-comment {
+        background: var(--blue);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 22px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 4px;
+      }
+      .btn-submit-comment:hover { background: var(--navy); transform: scale(1.03); }
+
+      /* Kartu komentar */
+      .comment-card {
+        background: white;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        padding: 16px 20px;
+        margin-bottom: 14px;
+        transition: box-shadow 0.2s;
+        position: relative;
+        border-left: 3px solid var(--blue);
+      }
+      .comment-card:hover { box-shadow: 0 6px 20px rgba(10,15,44,0.08); }
+      .comment-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .commenter-name {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: var(--text-main);
+      }
+      .commenter-avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--blue), var(--navy));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.72rem;
+        font-weight: 800;
+        flex-shrink: 0;
+      }
+      .comment-time {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+      .comment-text {
+        font-size: 0.875rem;
+        color: #334155;
+        line-height: 1.65;
+        margin: 0;
+      }
+
+      /* Empty komentar */
+      .empty-comment {
+        text-align: center;
+        padding: 40px 20px;
+        background: white;
+        border-radius: var(--radius);
+        border: 1.5px dashed #cbd5e1;
+        color: var(--text-muted);
+      }
+      .empty-comment i { font-size: 2.5rem; opacity: 0.3; }
+
+      /* ── FOOTER ── */
+      footer {
+        background: var(--navy);
+        color: rgba(255,255,255,0.5);
+        text-align: center;
+        padding: 28px;
+        font-size: 0.82rem;
+        margin-top: 80px;
+      }
+
+      /* WA Button */
+      .btn-whatsapp {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        width: 54px;
+        height: 54px;
+        background: #25d366;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 20px rgba(37,211,102,0.4);
+        z-index: 999;
+        text-decoration: none;
+        transition: transform 0.2s;
+      }
+      .btn-whatsapp:hover { transform: scale(1.1); color: white; }
+
+      .empty-alert {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 12px;
+        padding: 16px 20px;
+        color: #92400e;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg">
+      <div class="container d-flex align-items-center gap-3">
+        <a href="{% url 'index' %}" class="btn-back">
+          <i class="bi bi-arrow-left"></i> Kembali
+        </a>
+        <a href="{% url 'index' %}" class="navbar-brand mb-0">LMS <span>Academy</span></a>
+        <span class="course-title-nav d-none d-md-block ms-2">/ {{ course.name }}</span>
+        <a href="/api/v1/docs" target="_blank" class="ms-auto text-decoration-none" style="font-size:0.82rem; font-weight:600; color:#e0a800; white-space:nowrap;">
+          <i class="bi bi-code-slash me-1"></i>Swagger Docs
+        </a>
+      </div>
+    </nav>
+
+    <div class="container" style="padding-top: 32px; padding-bottom: 40px;">
+
+      <!-- FLASH MESSAGES -->
+      {% if messages %}
+      <div class="flash-area mb-4">
+        {% for message in messages %}
+          {% if message.tags == 'error' %}
+          <div class="alert-custom alert-error-custom">
+            <i class="bi bi-exclamation-circle-fill"></i> {{ message }}
+          </div>
+          {% else %}
+          <div class="alert-custom alert-success-custom">
+            <i class="bi bi-patch-check-fill"></i> {{ message }}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="row g-4">
+
+        <!-- KOLOM KIRI: Video + Komentar -->
+        <div class="col-lg-8">
+
+          <!-- VIDEO LIST -->
+          {% for content in course.contents.all %}
+          <div class="video-card">
+            <div class="video-header">
+              <div class="play-icon"><i class="bi bi-play-fill"></i></div>
+              <h5>{{ content.name }}</h5>
+            </div>
+            <div class="ratio ratio-16x9">
+              <iframe
+                src="{{ content.video_url }}"
+                title="{{ content.name }}"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen>
+              </iframe>
+            </div>
+            <div class="video-desc">
+              <h6>Deskripsi Materi</h6>
+              {% if content.description %}
+                {{ content.description }}
+              {% else %}
+                <span style="color:#b0bec5; font-style:italic;">Tidak ada deskripsi untuk materi ini.</span>
+              {% endif %}
+            </div>
+          </div>
+          {% empty %}
+          <div class="empty-alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Belum ada materi video untuk kursus ini.
+          </div>
+          {% endfor %}
+
+          <!-- SEKSI KOMENTAR -->
+          <div class="comment-section">
+            <div class="section-heading">
+              Komentar
+              <span class="count-badge">{{ comments|length }}</span>
+            </div>
+
+            <!-- FORM KOMENTAR -->
+            <div class="comment-form-card">
+              <div class="comment-form-header">
+                <i class="bi bi-chat-dots-fill"></i> Tulis Komentar
+              </div>
+              <div class="comment-form-body">
+                <form method="POST">
+                  {% csrf_token %}
+                  <div class="mb-3">
+                    <label class="form-label-custom">Nama Kamu</label>
+                    <input
+                      type="text"
+                      class="form-control-custom"
+                      name="nama_komentator"
+                      placeholder="Contoh: Budi Santoso"
+                      required
+                    />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label-custom">Komentar</label>
+                    <textarea
+                      class="form-control-custom"
+                      name="isi_komentar"
+                      placeholder="Tulis pendapatmu tentang kursus ini..."
+                      required
+                    ></textarea>
+                  </div>
+                  <button type="submit" name="kirim_komentar" class="btn-submit-comment">
+                    <i class="bi bi-send-fill"></i> Kirim Komentar
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- DAFTAR KOMENTAR -->
+            {% if comments %}
+              {% for comment in comments %}
+              <div class="comment-card">
+                <div class="comment-meta">
+                  <div class="commenter-name">
+                    <div class="commenter-avatar">{{ comment.nama_komentator|first|upper }}</div>
+                    {{ comment.nama_komentator }}
+                  </div>
+                  <span class="comment-time">
+                    <i class="bi bi-clock me-1"></i>{{ comment.dibuat_pada|date:"d M Y, H:i" }}
+                  </span>
+                </div>
+                <p class="comment-text">{{ comment.isi_komentar }}</p>
+              </div>
+              {% endfor %}
+
+            {% else %}
+              <div class="empty-comment">
+                <i class="bi bi-chat-square-dots d-block mb-2"></i>
+                <p class="mb-0 fw-600">Belum ada komentar.</p>
+                <p class="mb-0" style="font-size:0.82rem;">Jadilah yang pertama berkomentar! 🎉</p>
+              </div>
+            {% endif %}
+
+          </div>
+          <!-- END KOMENTAR -->
+
+        </div>
+
+        <!-- KOLOM KANAN: Sidebar Info -->
+        <div class="col-lg-4">
+          <div class="sidebar">
+            <div class="info-card">
+              <div class="info-card-header">
+                <h5>{{ course.name }}</h5>
+                <p>Informasi Kursus</p>
+              </div>
+              <div class="info-body">
+                <div class="info-row">
+                  <label>Pengajar</label>
+                  <span><i class="bi bi-person-fill me-1 text-primary"></i>{{ course.teacher.fullname }}</span>
+                </div>
+                <div class="info-row">
+                  <label>Email Pengajar</label>
+                  <span style="font-size:0.83rem; word-break:break-all;">{{ course.teacher.email }}</span>
+                </div>
+                <div class="info-row">
+                  <label>Kategori</label>
+                  <span><div class="badge-cat">{{ course.category }}</div></span>
+                </div>
+                <div class="info-row">
+                  <label>Total Komentar</label>
+                  <span><i class="bi bi-chat-dots-fill me-1 text-primary"></i>{{ comments|length }} komentar</span>
+                </div>
+                <hr style="border-color:#f1f5f9; margin: 16px 0;">
+                <!-- TOMBOL SELESAIKAN — pisah form agar tidak konflik dengan form komentar -->
+                <form method="POST">
+                  {% csrf_token %}
+                  <button type="submit" name="selesaikan" class="btn-complete">
+                    <i class="bi bi-check2-all"></i> Selesaikan Kursus
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+      &copy; 2026 LMS Academy &mdash; Programmer: Samudra. All rights reserved.
+    </footer>
+
+    <!-- WA Button -->
+    <a href="https://wa.me/62895382809792" class="btn-whatsapp" target="_blank">
+      <i class="bi bi-whatsapp"></i>
+    </a>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

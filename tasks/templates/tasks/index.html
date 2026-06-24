@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LMS Academy | Katalog Kursus</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    {% load img_filters %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --navy: #0a0f2c;
+        --navy-mid: #141a3d;
+        --blue: #2563eb;
+        --blue-light: #3b82f6;
+        --accent: #f59e0b;
+        --accent-light: #fcd34d;
+        --surface: #f0f4ff;
+        --surface-card: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --radius: 18px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        background-color: var(--surface);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--text-main);
+        margin: 0;
+      }
+
+      /* ── NAVBAR ── */
+      .navbar {
+        background: var(--navy);
+        padding: 14px 0;
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      }
+      .navbar-brand {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.5rem;
+        color: white !important;
+        letter-spacing: -0.3px;
+      }
+      .navbar-brand span { color: var(--accent); }
+      .nav-link {
+        color: rgba(255,255,255,0.75) !important;
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: color 0.2s;
+      }
+      .nav-link:hover, .nav-link.active { color: #fff !important; }
+      .nav-link.text-info { color: #60c6ff !important; }
+      .nav-link.text-success { color: #4ade80 !important; }
+      .btn-admin {
+        background: var(--accent);
+        color: var(--navy) !important;
+        font-weight: 700;
+        font-size: 0.8rem;
+        border-radius: 8px;
+        padding: 6px 14px;
+        border: none;
+        transition: background 0.2s;
+      }
+      .btn-admin:hover { background: var(--accent-light); }
+
+      /* ── HERO ── */
+      .hero {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 60%, #1e3a8a 100%);
+        padding: 80px 0 100px;
+        position: relative;
+        overflow: hidden;
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(37,99,235,0.25) 0%, transparent 70%);
+        top: -150px;
+        right: -100px;
+        pointer-events: none;
+      }
+      .hero::after {
+        content: '';
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%);
+        bottom: -80px;
+        left: 50px;
+        pointer-events: none;
+      }
+      .hero-eyebrow {
+        display: inline-block;
+        background: rgba(245,158,11,0.15);
+        border: 1px solid rgba(245,158,11,0.3);
+        color: var(--accent-light);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 5px 14px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+      }
+      .hero h1 {
+        font-family: 'DM Serif Display', serif;
+        font-size: clamp(2.2rem, 5vw, 3.5rem);
+        color: white;
+        line-height: 1.15;
+        margin-bottom: 16px;
+      }
+      .hero h1 em {
+        font-style: italic;
+        color: var(--accent-light);
+      }
+      .hero p.lead {
+        color: rgba(255,255,255,0.65);
+        font-size: 1rem;
+        max-width: 500px;
+        margin: 0 auto 32px;
+      }
+      .search-wrap {
+        max-width: 560px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .search-wrap input {
+        width: 100%;
+        padding: 16px 60px 16px 22px;
+        border-radius: 14px;
+        border: 2px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.08);
+        color: white;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.95rem;
+        backdrop-filter: blur(10px);
+        transition: border 0.2s, background 0.2s;
+        outline: none;
+      }
+      .search-wrap input::placeholder { color: rgba(255,255,255,0.4); }
+      .search-wrap input:focus {
+        border-color: var(--blue-light);
+        background: rgba(255,255,255,0.12);
+      }
+      .search-wrap button {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--blue);
+        border: none;
+        border-radius: 10px;
+        width: 42px;
+        height: 42px;
+        color: white;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .search-wrap button:hover { background: var(--blue-light); }
+      .hero-stats {
+        display: flex;
+        justify-content: center;
+        gap: 32px;
+        margin-top: 40px;
+        flex-wrap: wrap;
+      }
+      .hero-stat {
+        text-align: center;
+        color: rgba(255,255,255,0.6);
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+      .hero-stat strong {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: white;
+        margin-bottom: 2px;
+      }
+
+      /* ── SECTION ── */
+      .section-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--blue);
+        margin-bottom: 6px;
+      }
+      .section-title {
+        font-family: 'DM Serif Display', serif;
+        font-size: 2rem;
+        color: var(--text-main);
+        margin-bottom: 4px;
+      }
+
+      /* ── COURSE CARD ── */
+      .course-card {
+        background: var(--surface-card);
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .course-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 40px rgba(10,15,44,0.12);
+      }
+      .course-img-wrap {
+        position: relative;
+        overflow: hidden;
+        height: 200px;
+      }
+      .course-img-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+      }
+      .course-card:hover .course-img-wrap img { transform: scale(1.05); }
+      .course-img-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(10,15,44,0.5) 0%, transparent 50%);
+      }
+      .badge-category {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: rgba(255,255,255,0.95);
+        color: var(--blue);
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+        letter-spacing: 0.3px;
+        backdrop-filter: blur(4px);
+      }
+      .badge-done {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: #22c55e;
+        color: white;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+      }
+      .card-body-custom {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .card-title-custom {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--text-main);
+        margin-bottom: 12px;
+        line-height: 1.4;
+      }
+      .progress-wrap {
+        margin-bottom: 16px;
+      }
+      .progress-bar-bg {
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .progress-bar-fill {
+        height: 100%;
+        border-radius: 99px;
+        transition: width 0.5s ease;
+      }
+      .progress-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-top: 4px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .card-footer-custom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: auto;
+        padding-top: 14px;
+        border-top: 1px solid #f1f5f9;
+      }
+      .price-tag {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--blue);
+      }
+      .btn-open {
+        background: var(--blue);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background 0.2s, transform 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .btn-open:hover { background: var(--navy); color: white; transform: scale(1.04); }
+      .btn-open.done {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1.5px solid #bbf7d0;
+      }
+      .btn-open.done:hover { background: #dcfce7; }
+      .pagination-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        margin-top: 40px;
+        flex-wrap: wrap;
+      }
+      .page-link-custom {
+        min-width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: var(--surface-card);
+        border: 1px solid #e2e8f0;
+        color: var(--text-main);
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-decoration: none;
+        padding: 0 10px;
+        transition: background 0.2s, color 0.2s, transform 0.15s;
+      }
+      .page-link-custom:hover {
+        background: var(--blue);
+        color: white;
+        transform: scale(1.05);
+      }
+      .page-link-custom.active {
+        background: var(--navy);
+        color: white;
+        border-color: var(--navy);
+      }
+      .page-link-custom.disabled {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .pagination-info {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        margin-top: 12px;
+      }
+      .teacher-info {
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+      .teacher-avatar {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--blue), var(--navy));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      /* ── EMPTY STATE ── */
+      .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        color: var(--text-muted);
+      }
+      .empty-state i { font-size: 4rem; opacity: 0.3; }
+      .empty-state h4 { font-weight: 700; margin-top: 16px; color: var(--text-main); }
+
+      /* ── FOOTER ── */
+      footer {
+        background: var(--navy);
+        color: rgba(255,255,255,0.5);
+        text-align: center;
+        padding: 28px;
+        font-size: 0.82rem;
+        margin-top: 80px;
+      }
+
+      /* ── WA BUTTON ── */
+      .btn-whatsapp {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        width: 54px;
+        height: 54px;
+        background: #25d366;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 20px rgba(37,211,102,0.4);
+        z-index: 999;
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .btn-whatsapp:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 28px rgba(37,211,102,0.5);
+        color: white;
+      }
+
+      /* ── QUERY ALERT ── */
+      .query-info {
+        background: white;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 20px;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-bottom: 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .query-info strong { color: var(--text-main); }
+      .query-info a { color: var(--blue); font-weight: 600; text-decoration: none; margin-left: auto; }
+    </style>
+  </head>
+  <body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg">
+      <div class="container">
+        <a class="navbar-brand" href="/"><i class="bi bi-mortarboard-fill me-2"></i>LMS <span>Academy</span></a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto align-items-center gap-1">
+            <li class="nav-item"><a class="nav-link active" href="/"><i class="bi bi-house me-1"></i>Beranda</a></li>
+            <li class="nav-item"><a class="nav-link text-info" href="{% url 'stats' %}"><i class="bi bi-bar-chart me-1"></i>Statistik</a></li>
+            <li class="nav-item"><a class="nav-link text-success" href="/silk/" target="_blank"><i class="bi bi-cpu me-1"></i>Silk</a></li>
+            <li class="nav-item"><a class="nav-link text-warning" href="/api/v1/docs" target="_blank"><i class="bi bi-code-slash me-1"></i>Swagger Docs</a></li>
+            <li class="nav-item ms-2"><a href="/admin/" class="btn-admin" target="_blank"><i class="bi bi-shield-lock me-1"></i>Admin</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero text-center">
+      <div class="container position-relative">
+        <div class="hero-eyebrow"><i class="bi bi-mortarboard-fill me-1"></i>Platform Belajar #1</div>
+        <h1>Belajar Hal Baru,<br><em>Setiap Hari.</em></h1>
+        <p class="lead">Kuasai skill terbaru bersama instruktur berpengalaman. Mulai dari nol hingga profesional.</p>
+        <div class="search-wrap">
+          <form action="{% url 'index' %}" method="GET">
+            <input type="text" name="q" placeholder="Cari kursus yang kamu inginkan..." value="{{ query|default:'' }}" />
+            <button type="submit"><i class="bi bi-search"></i></button>
+          </form>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><strong>{{ courses|length }}</strong> Kursus</div>
+          <div class="hero-stat"><strong>100%</strong> Online</div>
+          <div class="hero-stat"><strong>∞</strong> Akses Selamanya</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTENT -->
+    <div class="container" style="padding-top: 48px; padding-bottom: 20px;">
+
+      {% if query %}
+      <div class="query-info">
+        <i class="bi bi-search text-primary"></i>
+        Hasil pencarian untuk: <strong>"{{ query }}"</strong> — {{ courses|length }} kursus ditemukan
+        <a href="{% url 'index' %}"><i class="bi bi-x-circle me-1"></i>Hapus filter</a>
+      </div>
+      {% else %}
+      <div class="mb-4">
+        <div class="section-label">Semua Kursus</div>
+        <div class="section-title">Pilih Kursus Favoritmu</div>
+      </div>
+      {% endif %}
+
+      <div class="row g-4">
+        {% for c in courses %}
+        <div class="col-md-6 col-lg-4">
+          <div class="course-card">
+            <div class="course-img-wrap">
+              <img src="{{ c.image_url|optimize_img }}" alt="{{ c.name }}" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/600x400/0a0f2c/ffffff?text={{ c.name|urlencode }}'"/>
+              <div class="course-img-overlay"></div>
+              <div class="badge-category">{{ c.category }}</div>
+              {% if c.id in completed_courses %}
+              <div class="badge-done"><i class="bi bi-check2 me-1"></i>Selesai</div>
+              {% endif %}
+            </div>
+
+            <div class="card-body-custom">
+              <div class="card-title-custom">{{ c.name }}</div>
+
+              <div class="progress-wrap">
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill {% if c.id in completed_courses %}bg-success{% else %}bg-primary{% endif %}"
+                       style="width: {% if c.id in completed_courses %}100{% else %}0{% endif %}%"></div>
+                </div>
+                <div class="progress-label">
+                  <span>Progress</span>
+                  <span>{% if c.id in completed_courses %}100%{% else %}0%{% endif %}</span>
+                </div>
+              </div>
+
+              <div class="card-footer-custom">
+                <div class="price-tag">Rp {{ c.price|floatformat:0 }}</div>
+                <a href="{% url 'course_detail' c.id %}"
+                   class="btn-open {% if c.id in completed_courses %}done{% endif %}">
+                  {% if c.id in completed_courses %}
+                    <i class="bi bi-check-circle-fill"></i> Lihat Lagi
+                  {% else %}
+                    Buka Materi <i class="bi bi-arrow-right"></i>
+                  {% endif %}
+                </a>
+              </div>
+            </div>
+
+            <div class="teacher-info">
+              <div class="teacher-avatar">{{ c.teacher.fullname|first|upper }}</div>
+              {{ c.teacher.fullname }}
+            </div>
+          </div>
+        </div>
+
+        {% empty %}
+        <div class="col-12">
+          <div class="empty-state">
+            <i class="bi bi-search"></i>
+            <h4>Kursus Tidak Ditemukan</h4>
+            <p>Coba kata kunci yang berbeda atau lihat semua kursus.</p>
+            <a href="{% url 'index' %}" class="btn-open mt-2 d-inline-flex">Lihat Semua Kursus</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if page_obj.paginator.num_pages > 1 %}
+      <div class="pagination-wrap">
+        {% if page_obj.has_previous %}
+          <a class="page-link-custom" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}"><i class="bi bi-chevron-left"></i></a>
+        {% else %}
+          <span class="page-link-custom disabled"><i class="bi bi-chevron-left"></i></span>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if num == page_obj.number %}
+            <span class="page-link-custom active">{{ num }}</span>
+          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <a class="page-link-custom" href="?page={{ num }}{% if query %}&q={{ query|urlencode }}{% endif %}">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <a class="page-link-custom" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}"><i class="bi bi-chevron-right"></i></a>
+        {% else %}
+          <span class="page-link-custom disabled"><i class="bi bi-chevron-right"></i></span>
+        {% endif %}
+      </div>
+      <div class="pagination-info">
+        Halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }} &middot; {{ page_obj.paginator.count }} kursus total
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+      &copy; 2026 LMS Academy &mdash; Programmer: Samudra. All rights reserved.
+    </footer>
+
+    <!-- WA Button -->
+    <a href="https://wa.me/62895382809792" class="btn-whatsapp" target="_blank">
+      <i class="bi bi-whatsapp"></i>
+    </a>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

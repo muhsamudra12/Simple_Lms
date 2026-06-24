@@ -1,0 +1,232 @@
+/* ============================================================
+   LMS Academy — Custom Django Admin Theme (Light & Friendly)
+   Satu set variabel dipakai untuk SEMUA mode (light/dark/auto)
+   supaya tidak ada lagi variabel yang "ketinggalan" dan bocor
+   ke palet gelap bawaan Django.
+   ============================================================ */
+
+:root,
+html[data-theme="light"],
+html[data-theme="dark"] {
+  --primary: #2563eb;
+  --secondary: #3b82f6;
+  --accent: #f59e0b;
+  --primary-fg: #fff;
+
+  --body-fg: #1e293b;
+  --body-bg: #f8fafc;
+  --body-quiet-color: #475569;
+  --body-medium-color: #334155;
+  --body-loud-color: #0f172a;
+
+  --header-color: #ffffff;
+  --header-branding-color: #fde68a;
+  --header-bg: #2563eb;
+  --header-link-color: #ffffff;
+
+  --breadcrumbs-fg: #eff6ff;
+  --breadcrumbs-link-fg: #ffffff;
+  --breadcrumbs-bg: #3b82f6;
+
+  --link-fg: #2563eb;
+  --link-hover-color: #f59e0b;
+  --link-selected-fg: #1d4ed8;
+
+  --button-fg: #1e293b;
+  --button-bg: var(--accent);
+  --button-hover-bg: #fbbf24;
+  --default-button-bg: #2563eb;
+  --default-button-hover-bg: #1d4ed8;
+
+  --selected-bg: #eff6ff;
+  --selected-row: #fef3c7;
+
+  --border-color: #e2e8f0;
+  --hairline-color: #f1f5f9;
+
+  --darkened-bg: #f1f5f9;
+  --close-button-bg: #64748b;
+  --close-button-hover-bg: #475569;
+
+  --error-fg: #dc2626;
+  --message-debug-bg: #f1f5f9;
+  --message-info-bg: #dbeafe;
+  --message-success-bg: #dcfce7;
+  --message-warning-bg: #fef3c7;
+  --message-error-bg: #fee2e2;
+
+  /* Paksa browser tetap pakai palet terang ini di semua kondisi */
+  color-scheme: light;
+}
+
+/* Jaga-jaga tambahan: kalau OS/browser dark mode & atribut data-theme
+   belum sempat di-set JS, tetap paksa palet terang yang sama. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="dark"]) {
+    --body-fg: #1e293b;
+    --body-bg: #f8fafc;
+    --body-quiet-color: #475569;
+    --body-medium-color: #334155;
+    --body-loud-color: #0f172a;
+    --darkened-bg: #f1f5f9;
+    --hairline-color: #f1f5f9;
+    --border-color: #e2e8f0;
+    --selected-bg: #eff6ff;
+    --selected-row: #fef3c7;
+    --close-button-bg: #64748b;
+    --close-button-hover-bg: #475569;
+    color-scheme: light;
+  }
+}
+
+/* Sembunyikan tombol toggle tema supaya tidak ada yang tidak sengaja
+   pindah ke dark mode lagi. */
+.theme-toggle {
+  display: none !important;
+}
+
+/* ── Branding header ───────────────────────────────────────── */
+#header {
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+#branding h1#site-name a {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+#branding h1#site-name a .accent {
+  color: #fde68a;
+}
+
+#branding h1#site-name a .admin-sub {
+  font-size: 0.6em;
+  font-weight: 500;
+  color: #dbeafe;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Module / panel cards ──────────────────────────────────── */
+.module {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+  background: var(--secondary);
+  color: #ffffff;
+  border-radius: 0;
+  font-weight: 600;
+}
+
+/* ── Buttons umum ──────────────────────────────────────────── */
+.button,
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+a.button {
+  border-radius: 8px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.button.default,
+input[type="submit"].default,
+.submit-row input.default {
+  background: var(--accent);
+  color: #1e293b;
+}
+
+.button.default:hover,
+input[type="submit"].default:hover {
+  background: #fbbf24;
+}
+
+/* ── Dashboard app list ────────────────────────────────────── */
+#content-main .module table th {
+  font-weight: 600;
+}
+
+/* ── Login page ────────────────────────────────────────────── */
+body.login {
+  background: #eff6ff;
+}
+
+.login #container {
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.12);
+}
+
+.login .form-row {
+  border-radius: 8px;
+}
+
+.login .submit-row input {
+  background: var(--accent);
+  color: #1e293b;
+  font-weight: 700;
+}
+
+/* ── Object tools (Add, Import, Export) ─────────────────────
+   Default Django styling tombol "object-tools" (selain Add)
+   memakai --close-button-bg, yang gampang ke-bug jadi item
+   pekat. Di-styling ulang manual biar pasti senada brand. ── */
+.object-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.object-tools li {
+  list-style: none;
+}
+
+.object-tools a.button,
+.object-tools a.addlink,
+.object-tools a.import_link,
+.object-tools a.export_link,
+.object-tools a.viewlink,
+.object-tools a.changelink {
+  display: inline-block;
+  background: #64748b !important;
+  color: #ffffff !important;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  text-decoration: none !important;
+}
+
+.object-tools a.button:hover,
+.object-tools a.import_link:hover,
+.object-tools a.export_link:hover {
+  background: #475569 !important;
+}
+
+.object-tools a.addlink {
+  background: var(--primary) !important;
+}
+
+.object-tools a.addlink:hover {
+  background: #1d4ed8 !important;
+}
+
+/* ── Sidebar nav (Django 5+) ──────────────────────────────── */
+#nav-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
+.app-tasks .section {
+  font-weight: 600;
+}
+
+#nav-sidebar .current-model {
+  background: var(--selected-row) !important;
+}

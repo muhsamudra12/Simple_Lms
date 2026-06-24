@@ -1,0 +1,16 @@
+id,name,description,price,teacher_id,image_url,category
+1,Python untuk Pemula,"Belajar dasar-dasar Python dari nol: variabel, kondisi, looping, fungsi, dan OOP.",150000,1,https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=600,Pemrograman
+2,Web Development dengan Django,Membangun aplikasi web modern menggunakan framework Django secara menyeluruh.,250000,2,https://images.unsplash.com/photo-1581276879432-15e50529f34b?w=600,Web
+3,Data Science dengan Pandas,Analisis data menggunakan library Pandas dan visualisasi dengan Matplotlib.,200000,3,https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600,Data Science
+4,Machine Learning Dasar,"Pengenalan konsep machine learning, regresi, klasifikasi, dan clustering.",350000,1,https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600,AI & ML
+5,HTML & CSS untuk Pemula,Memahami struktur halaman web dengan HTML5 dan styling menggunakan CSS3.,75000,4,https://images.unsplash.com/photo-1621839673705-6617adf9e890?w=600,Web
+6,JavaScript Modern (ES6+),"Kuasai JavaScript modern: arrow function, promise, async/await, dan modul.",180000,2,https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=600,Pemrograman
+7,Database SQL dengan PostgreSQL,"Mempelajari query SQL, relasi tabel, indexing, dan optimasi database.",120000,5,https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=600,Database
+8,Flutter untuk Mobile App,Membangun aplikasi Android dan iOS dengan Flutter dan bahasa Dart.,300000,3,https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600,Mobile
+9,Desain UI/UX dengan Figma,Mempelajari prinsip desain UI/UX dan membuat prototipe interaktif di Figma.,90000,6,https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600,Desain
+10,Cloud Computing dengan AWS,"Pengenalan layanan AWS: EC2, S3, RDS, Lambda, dan deployment aplikasi cloud.",400000,7,https://images.unsplash.com/photo-1667984390527-850f63192709?w=600,Cloud
+11,React JS dari Nol,Membangun antarmuka web modern dan reaktif dengan library React JS.,220000,2,https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=600,Web
+12,Cyber Security Fundamentals,"Memahami dasar-dasar keamanan siber: enkripsi, firewall, dan ethical hacking.",275000,8,https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600,Keamanan
+13,Git & GitHub untuk Tim,Menguasai version control dengan Git dan kolaborasi proyek menggunakan GitHub.,50000,9,https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=600,DevOps
+14,Node.js & Express REST API,Membangun REST API yang scalable menggunakan Node.js dan framework Express.,195000,10,https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600,Web
+15,Statistika untuk Data Analyst,Fondasi statistika deskriptif dan inferensial yang dibutuhkan seorang data analyst.,130000,5,https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600,Data Science
