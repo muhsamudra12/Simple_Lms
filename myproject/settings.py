@@ -37,6 +37,18 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# CSRF_TRUSTED_ORIGINS — WAJIB diisi untuk hosting di belakang proxy HTTPS
+# (Railway, Render, dll). Tanpa ini, semua form POST (login admin, form
+# komentar, dst) akan ditolak 403 "CSRF verification failed" walau
+# ALLOWED_HOSTS sudah benar — keduanya adalah pengecekan yang berbeda.
+# Otomatis di-generate dari ALLOWED_HOSTS supaya tidak perlu isi dua kali,
+# selama domainnya bukan '*' (wildcard tidak valid untuk CSRF_TRUSTED_ORIGINS).
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{host.strip()}"
+    for host in os.environ.get('ALLOWED_HOSTS', '').split(',')
+    if host.strip() and host.strip() != '*'
+]
+
 
 # Application definition
 
