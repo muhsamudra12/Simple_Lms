@@ -10,11 +10,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN chmod +x start.sh
+
 EXPOSE 8000
 
-# Default start command — dipakai kalau platform hosting (Railway/Render/dll)
-# build & jalankan Dockerfile ini LANGSUNG tanpa docker-compose. Untuk dev
-# lokal via `docker-compose up`, command ini di-override oleh docker-compose.yml.
-# Gunicorn dipakai (bukan `manage.py runserver`) karena ini WSGI server yang
-# memang ditujukan untuk production, bukan server pengembangan.
-CMD sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn myproject.wsgi:application --bind 0.0.0.0:${PORT:-8000}"
+# Pakai exec form (array) + script start.sh terpisah supaya expansi
+# variable $PORT terjamin jalan apapun cara platform hosting invoke
+# container ini (lihat start.sh untuk detail).
+CMD ["./start.sh"]
