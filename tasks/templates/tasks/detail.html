@@ -501,6 +501,15 @@
       </div>
       {% endif %}
 
+      {% if not logged_in_user %}
+      <div class="alert-custom mb-4" style="background:#eff6ff; color:#1e3a8a; border-left:4px solid #2563eb;">
+        <i class="bi bi-eye-fill"></i>
+        Kamu lihat <strong>preview</strong> kursus ini. <a href="{% url 'login_page' %}" style="color:#2563eb; font-weight:700; text-decoration:underline;">Login</a>
+        atau <a href="{% url 'register_page' %}" style="color:#2563eb; font-weight:700; text-decoration:underline;">Daftar</a>
+        untuk menonton video & melacak progress belajarmu.
+      </div>
+      {% endif %}
+
       <div class="row g-4">
 
         <!-- KOLOM KIRI: Video + Komentar -->
@@ -516,6 +525,7 @@
                 <span class="badge-done-mini"><i class="bi bi-check-circle-fill"></i> Selesai</span>
               {% endif %}
             </div>
+            {% if logged_in_user %}
             <div class="ratio ratio-16x9">
               <iframe
                 src="{{ content.video_url }}"
@@ -526,6 +536,13 @@
                 allowfullscreen>
               </iframe>
             </div>
+            {% else %}
+            <div class="ratio ratio-16x9" style="background:#0a0f2c; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; color:#fff;">
+              <i class="bi bi-lock-fill" style="font-size:2rem; color:#f59e0b;"></i>
+              <span style="font-size:0.85rem; font-weight:600;">Login untuk menonton materi ini</span>
+              <a href="{% url 'login_page' %}" style="background:#f59e0b; color:#0a0f2c; font-weight:700; font-size:0.8rem; padding:8px 18px; border-radius:8px; text-decoration:none;">Login Sekarang</a>
+            </div>
+            {% endif %}
             <div class="video-desc">
               <h6>Deskripsi Materi</h6>
               {% if content.description %}
@@ -534,6 +551,7 @@
                 <span style="color:#b0bec5; font-style:italic;">Tidak ada deskripsi untuk materi ini.</span>
               {% endif %}
             </div>
+            {% if logged_in_user %}
             <form method="POST" class="px-3 pb-3">
               {% csrf_token %}
               <input type="hidden" name="content_id" value="{{ content.id }}" />
@@ -547,6 +565,7 @@
                 </button>
               {% endif %}
             </form>
+            {% endif %}
           </div>
           {% empty %}
           <div class="empty-alert">
@@ -654,7 +673,17 @@
                 <hr style="border-color:#f1f5f9; margin: 16px 0;">
                 <!-- PROGRESS OTOMATIS — dihitung dari materi yang sudah ditandai
                      selesai satu-satu, bukan tombol manual "selesai" lagi -->
-                {% if total_content == 0 %}
+                {% if not logged_in_user %}
+                <div class="info-row">
+                  <label>Progress Kamu</label>
+                </div>
+                <p class="text-muted mb-2" style="font-size:0.78rem;"><i class="bi bi-lock-fill me-1"></i>Login untuk melacak progress belajarmu di kursus ini.</p>
+                <a href="{% url 'login_page' %}"
+                   class="btn w-100 d-inline-flex align-items-center justify-content-center gap-2 fw-bold"
+                   style="background:#f59e0b; color:#0a0f2c; border-radius:10px; text-decoration:none;">
+                  <i class="bi bi-box-arrow-in-right"></i> Login Sekarang
+                </a>
+                {% elif total_content == 0 %}
                 <div class="info-row">
                   <label>Progress Kamu</label>
                 </div>

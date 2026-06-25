@@ -33,6 +33,14 @@ class CourseContent(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='contents')  # Relasi ke Course
     description = models.TextField(null=True, blank=True)
 
+    def __str__(self):
+        # Sebelumnya model ini TIDAK punya __str__ sama sekali, jadi Django
+        # Admin nampilin representasi default Python yang generic ("CourseContent
+        # object (2)") — baik di header tiap baris inline materi di halaman
+        # Course, maupun di dropdown autocomplete (misal pas pilih materi di
+        # Admin ContentProgress). Sekarang nampilin nama materi yang sebenarnya.
+        return f"{self.name} ({self.course.name})"
+
     def save(self, *args, **kwargs):
         if "watch?v=" in self.video_url:
             video_id = self.video_url.split("v=")[1].split("&")[0]

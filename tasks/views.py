@@ -55,18 +55,24 @@ def detail(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     comments = course.comments.all()
 
-    # Materi kursus sekarang wajib login dulu — sebelumnya siapapun
-    # (termasuk yang belum daftar sama sekali) bisa langsung buka & nonton
-    # semua video tanpa batasan apapun.
+    # Halaman detail kursus sekarang BISA dibuka tanpa login — supaya
+    # pengunjung baru bisa lihat preview (deskripsi, daftar materi,
+    # komentar/review) dulu sebelum memutuskan daftar, alih-alih
+    # langsung di-redirect ke halaman login tanpa lihat apa-apa
+    # (kurang menarik buat konversi pengunjung baru).
+    #
+    # Yang TETAP wajib login: menonton video sungguhan & menandai materi
+    # selesai (lihat di bawah serta di template — guest cuma lihat
+    # placeholder terkunci untuk bagian video).
     user_id = request.session.get('user_id')
-    if not user_id:
-        messages.error(request, "Silakan login dulu untuk mengakses materi kursus ini.")
-        return redirect('login_page')
 
     if request.method == "POST":
 
         # ── Tandai Materi Selesai/Belum (per-video) ───────────────
         if 'toggle_content' in request.POST:
+            if not user_id:
+                messages.error(request, "Silakan login dulu untuk menandai materi selesai.")
+                return redirect('login_page')
             content_id = request.POST.get('content_id')
             content = get_object_or_404(CourseContent, id=content_id, course=course)
             progress, created = ContentProgress.objects.get_or_create(user_id=user_id, content=content)
@@ -117,7 +123,7 @@ def detail(request, course_id):
     # disimpan permanen (get_or_create) supaya tanggal terbit & kode
     # verifikasinya tidak berubah-ubah tiap halaman ini dibuka ulang.
     certificate = None
-    if is_course_complete:
+    if user_id and is_course_complete:
         certificate, _ = Certificate.objects.get_or_create(
             user_id=user_id, course=course
         )
