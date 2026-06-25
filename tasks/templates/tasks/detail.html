@@ -536,7 +536,12 @@
         <i class="bi bi-eye-fill"></i>
         Kamu lihat <strong>preview</strong> kursus ini. <a href="{% url 'login_page' %}" style="color:#2563eb; font-weight:700; text-decoration:underline;">Login</a>
         atau <a href="{% url 'register_page' %}" style="color:#2563eb; font-weight:700; text-decoration:underline;">Daftar</a>
-        untuk menonton video & melacak progress belajarmu.
+        untuk mengambil kursus, menonton video & melacak progress belajarmu.
+      </div>
+      {% elif not is_enrolled %}
+      <div class="alert-custom mb-4" style="background:#fffbeb; color:#92400e; border-left:4px solid #f59e0b;">
+        <i class="bi bi-eye-fill"></i>
+        Kamu lihat <strong>preview</strong> kursus ini. Ambil kursus ini dulu (lihat tombol di kolom kanan) untuk menonton video & melacak progress belajarmu.
       </div>
       {% endif %}
 
@@ -555,7 +560,7 @@
                 <span class="badge-done-mini"><i class="bi bi-check-circle-fill"></i> Selesai</span>
               {% endif %}
             </div>
-            {% if logged_in_user %}
+            {% if is_enrolled %}
             <div class="ratio ratio-16x9">
               <iframe
                 src="{{ content.video_url }}"
@@ -569,8 +574,17 @@
             {% else %}
             <div class="ratio ratio-16x9" style="background:#0a0f2c; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; color:#fff;">
               <i class="bi bi-lock-fill" style="font-size:2rem; color:#f59e0b;"></i>
+              {% if logged_in_user %}
+              {% if slots_left <= 0 %}
+              <span style="font-size:0.85rem; font-weight:600;">Kuota kursus ini penuh</span>
+              {% else %}
+              <span style="font-size:0.85rem; font-weight:600;">Ambil kursus ini dulu untuk menonton materi</span>
+              <button type="submit" name="ambil_kursus" form="ambilKursusForm" style="background:#f59e0b; color:#0a0f2c; font-weight:700; font-size:0.8rem; padding:8px 18px; border-radius:8px; border:none; cursor:pointer;">Ambil Kursus</button>
+              {% endif %}
+              {% else %}
               <span style="font-size:0.85rem; font-weight:600;">Login untuk menonton materi ini</span>
               <a href="{% url 'login_page' %}" style="background:#f59e0b; color:#0a0f2c; font-weight:700; font-size:0.8rem; padding:8px 18px; border-radius:8px; text-decoration:none;">Login Sekarang</a>
+              {% endif %}
             </div>
             {% endif %}
             <div class="video-desc">
@@ -581,7 +595,7 @@
                 <span style="color:#b0bec5; font-style:italic;">Tidak ada deskripsi untuk materi ini.</span>
               {% endif %}
             </div>
-            {% if logged_in_user %}
+            {% if is_enrolled %}
             <form method="POST" class="px-3 pb-3">
               {% csrf_token %}
               <input type="hidden" name="content_id" value="{{ content.id }}" />
@@ -720,18 +734,52 @@
                   <span><i class="bi bi-chat-dots-fill me-1 text-primary"></i>{{ comments|length }} komentar</span>
                 </div>
                 <hr style="border-color:#f1f5f9; margin: 16px 0;">
-                <!-- PROGRESS OTOMATIS — dihitung dari materi yang sudah ditandai
-                     selesai satu-satu, bukan tombol manual "selesai" lagi -->
-                {% if not logged_in_user %}
+
+                <!-- ENROLLMENT — gerbang utama sebelum materi & progress
+                     kebuka, mirip pola Udemy/Coursera (preview dulu,
+                     baru full access setelah "ambil" course). -->
                 <div class="info-row">
-                  <label>Progress Kamu</label>
+                  <label>Harga Kursus</label>
+                  <span class="fw-bold" style="color:var(--blue); font-size:1.05rem;">Rp {{ course.price|floatformat:0 }}</span>
                 </div>
-                <p class="text-muted mb-2" style="font-size:0.78rem;"><i class="bi bi-lock-fill me-1"></i>Login untuk melacak progress belajarmu di kursus ini.</p>
+
+                {% if is_enrolled %}
+                <div class="alert-custom alert-success-custom mb-0">
+                  <i class="bi bi-check-circle-fill"></i> Kamu sudah mengambil kursus ini.
+                </div>
+                {% elif logged_in_user %}
+                <p class="text-muted mb-2" style="font-size:0.78rem;">
+                  Sisa kuota: <strong>{{ slots_left }}</strong> dari {{ course.max_students }} peserta.
+                </p>
+                <form method="POST" id="ambilKursusForm">
+                  {% csrf_token %}
+                  <button type="submit" name="ambil_kursus"
+                    class="btn w-100 d-inline-flex align-items-center justify-content-center gap-2 fw-bold"
+                    style="background:#f59e0b; color:#0a0f2c; border-radius:10px; border:none; padding:11px;"
+                    {% if slots_left <= 0 %}disabled{% endif %}>
+                    {% if slots_left <= 0 %}
+                      <i class="bi bi-x-circle"></i> Kuota Penuh
+                    {% else %}
+                      <i class="bi bi-bag-check-fill"></i> Ambil Kursus
+                    {% endif %}
+                  </button>
+                </form>
+                {% else %}
                 <a href="{% url 'login_page' %}"
                    class="btn w-100 d-inline-flex align-items-center justify-content-center gap-2 fw-bold"
                    style="background:#f59e0b; color:#0a0f2c; border-radius:10px; text-decoration:none;">
-                  <i class="bi bi-box-arrow-in-right"></i> Login Sekarang
+                  <i class="bi bi-box-arrow-in-right"></i> Login untuk Ambil Kursus
                 </a>
+                {% endif %}
+
+                <hr style="border-color:#f1f5f9; margin: 16px 0;">
+                <!-- PROGRESS OTOMATIS — dihitung dari materi yang sudah ditandai
+                     selesai satu-satu, bukan tombol manual "selesai" lagi -->
+                {% if not is_enrolled %}
+                <div class="info-row">
+                  <label>Progress Kamu</label>
+                </div>
+                <p class="text-muted mb-0" style="font-size:0.78rem;"><i class="bi bi-lock-fill me-1"></i>Ambil kursus ini dulu untuk melacak progress belajarmu.</p>
                 {% elif total_content == 0 %}
                 <div class="info-row">
                   <label>Progress Kamu</label>

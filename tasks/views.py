@@ -1,9 +1,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Course, Comment, User, CourseContent, ContentProgress, Certificate
+from .models import Course, Comment, User, CourseContent, ContentProgress, Certificate, Enrollment
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.paginator import Paginator
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.db.models import Avg, Max, Min, Count
 from django.db.models.functions import Cast
 from django.db import models as db_models
@@ -41,15 +43,40 @@ def index(request):
     # database (per-video, milik user yang login), bukan dari session
     # browser lagi — sebelumnya progress hilang kalau ganti device/clear
     # cookie, dan tidak bisa dilihat/diedit dari Admin sama sekali.
+    #
+    # Rating per kursus (gaya Udemy/Coursera: bintang + rata-rata + jumlah
+    # ulasan langsung MENYATU di kartu kursusnya) dihitung di sini juga —
+    # menggantikan section testimoni terpisah sebelumnya, supaya rating &
+    # komentar terasa jadi satu kesatuan sama course-nya, bukan section
+    # yang berdiri sendiri di tempat lain.
     user_id = request.session.get('user_id')
+
+    # Status enrollment per kursus di kartu homepage — diambil sekali pakai
+    # satu query (set of course_id) per halaman, bukan query berulang per
+    # kartu, biar tetap ringan. Tombol "Ambil Kursus"/"Buka Kursus" di
+    # kartu langsung mencerminkan status ini (mirip Udemy/Coursera: enroll
+    # dulu sebelum bisa buka materi penuh).
+    enrolled_course_ids = set()
+    if user_id:
+        enrolled_course_ids = set(
+            Enrollment.objects.filter(student_id=user_id, status='paid').values_list('course_id', flat=True)
+        )
+
     for c in page_obj:
         total = c.contents.count()
         c.total_content = total
-        if user_id and total > 0:
+        c.is_enrolled = c.id in enrolled_course_ids
+        enrolled_count = Enrollment.objects.filter(course=c).count()
+        c.slots_left = max(0, c.max_students - enrolled_count)
+        if user_id and c.is_enrolled and total > 0:
             done = ContentProgress.objects.filter(user_id=user_id, content__course=c).count()
             c.progress_pct = int(done / total * 100)
         else:
             c.progress_pct = 0
+
+        course_rating = c.comments.aggregate(avg=Avg('rating'), total=Count('id'))
+        c.avg_rating = round(course_rating['avg'], 1) if course_rating['avg'] else None
+        c.review_count = course_rating['total']
 
     # Statistik hero section — SEBELUMNYA pakai `courses|length` di
     # template, yang cuma ngitung jumlah kursus DI HALAMAN PAGINATION INI
@@ -59,16 +86,6 @@ def index(request):
     total_courses = paginator.count
     rating_stats = Comment.objects.aggregate(avg_rating=Avg('rating'), total_reviews=Count('id'))
 
-    # Testimoni di homepage — diambil dari komentar course dengan rating
-    # bagus (4-5 bintang) supaya yang ditampilkan ke pengunjung baru
-    # benar-benar yang positif, bukan asal komentar terbaru yang bisa
-    # saja keluhan/rating rendah (kurang cocok buat "menarik perhatian").
-    testimonials = (
-        Comment.objects.filter(rating__gte=4)
-        .select_related('course')
-        .order_by('-dibuat_pada')[:6]
-    )
-
     return render(request, 'tasks/index.html', {
         'courses': page_obj,
         'page_obj': page_obj,
@@ -76,7 +93,6 @@ def index(request):
         'total_courses': total_courses,
         'avg_rating': round(rating_stats['avg_rating'], 1) if rating_stats['avg_rating'] else None,
         'total_reviews': rating_stats['total_reviews'],
-        'testimonials': testimonials,
     })
 
 
@@ -95,13 +111,43 @@ def detail(request, course_id):
     # placeholder terkunci untuk bagian video).
     user_id = request.session.get('user_id')
 
+    # Status enrollment — SEBELUMNYA model Enrollment ini sudah ada
+    # (lengkap dengan cek kuota max_students), tapi TIDAK PERNAH dipakai
+    # di halaman web sama sekali. Akibatnya siapapun yang login bisa
+    # langsung buka & nonton semua materi tanpa benar-benar "mengambil"
+    # course-nya dulu — gak ada gate apapun. Sekarang materi cuma
+    # terbuka kalau user sudah enroll DENGAN status 'paid'.
+    enrollment = None
+    if user_id:
+        enrollment = Enrollment.objects.filter(course=course, student_id=user_id).first()
+    is_enrolled = bool(enrollment and enrollment.status == 'paid')
+
     if request.method == "POST":
+
+        # ── Ambil Kursus (Enrollment) ──────────────────────────
+        if 'ambil_kursus' in request.POST:
+            if not user_id:
+                messages.error(request, "Silakan login dulu untuk mengambil kursus ini.")
+                return redirect('login_page')
+            try:
+                Enrollment.objects.create(course=course, student_id=user_id, status='paid')
+                messages.success(request, f"Berhasil mengambil kursus '{course.name}'! Selamat belajar 🎉")
+            except ValidationError as e:
+                # Dilempar dari Enrollment._check_capacity() — kuota penuh
+                messages.error(request, str(e.message) if hasattr(e, "message") else str(e))
+            except IntegrityError:
+                # unique_together (course, student) — sudah pernah enroll
+                messages.error(request, "Kamu sudah terdaftar di kursus ini.")
+            return redirect('course_detail', course_id=course.id)
 
         # ── Tandai Materi Selesai/Belum (per-video) ───────────────
         if 'toggle_content' in request.POST:
             if not user_id:
                 messages.error(request, "Silakan login dulu untuk menandai materi selesai.")
                 return redirect('login_page')
+            if not is_enrolled:
+                messages.error(request, "Ambil kursus ini dulu sebelum menandai materi selesai.")
+                return redirect('course_detail', course_id=course.id)
             content_id = request.POST.get('content_id')
             content = get_object_or_404(CourseContent, id=content_id, course=course)
             progress, created = ContentProgress.objects.get_or_create(user_id=user_id, content=content)
@@ -162,10 +208,15 @@ def detail(request, course_id):
     # disimpan permanen (get_or_create) supaya tanggal terbit & kode
     # verifikasinya tidak berubah-ubah tiap halaman ini dibuka ulang.
     certificate = None
-    if user_id and is_course_complete:
+    if user_id and is_enrolled and is_course_complete:
         certificate, _ = Certificate.objects.get_or_create(
             user_id=user_id, course=course
         )
+
+    # Sisa kuota — ditampilkan di tombol "Ambil Kursus" biar transparan
+    # (sama persis logika yang dipakai Enrollment._check_capacity()).
+    enrolled_count = Enrollment.objects.filter(course=course).count()
+    slots_left = max(0, course.max_students - enrolled_count)
 
     return render(request, 'tasks/detail.html', {
         'course': course,
@@ -176,6 +227,9 @@ def detail(request, course_id):
         'total_content': total,
         'is_course_complete': is_course_complete,
         'certificate': certificate,
+        'is_enrolled': is_enrolled,
+        'enrollment': enrollment,
+        'slots_left': slots_left,
     })
 
 

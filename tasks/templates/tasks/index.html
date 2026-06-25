@@ -234,58 +234,35 @@
         margin-bottom: 2px;
       }
 
-      /* ── TESTIMONIAL SECTION ───────────────────────────────── */
-      .testimonial-section {
-        padding: 56px 0 8px;
-      }
-      .testimonial-card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 24px;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 1px 3px rgba(15,23,42,0.04);
-      }
-      .testimonial-stars {
-        color: var(--accent);
-        font-size: 0.85rem;
-        margin-bottom: 12px;
-      }
-      .testimonial-text {
-        color: var(--text-main);
-        font-size: 0.9rem;
-        line-height: 1.6;
-        flex-grow: 1;
-        margin-bottom: 16px;
-      }
-      .testimonial-author {
+      /* ── RATING DI COURSE CARD (gaya Udemy/Coursera) ──────────
+         Menggantikan section testimoni terpisah — rating & jumlah
+         ulasan sekarang menyatu langsung di kartu course-nya. */
+      .card-rating {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 6px;
+        margin-bottom: 10px;
+        font-size: 0.82rem;
       }
-      .testimonial-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--navy);
-        color: var(--accent);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 0.95rem;
-        flex-shrink: 0;
+      .card-rating .stars { color: var(--accent); letter-spacing: 1px; }
+      .card-rating .score { font-weight: 800; color: var(--text-main); }
+      .card-rating .count { color: var(--text-muted); font-size: 0.78rem; }
+      .card-rating .no-rating { color: var(--text-muted); font-size: 0.78rem; font-style: italic; }
+
+      /* ── SCROLL-REVEAL ANIMATION ───────────────────────────────
+         Pure CSS transition + sedikit JS (IntersectionObserver) di
+         bagian bawah file buat toggle class .in-view saat elemen
+         masuk viewport. Kalau JS gagal/disabled, fallback browser
+         tetap nampilin konten (cuma tanpa animasi), tidak ada
+         konten yang ke-hide permanen. */
+      .reveal {
+        opacity: 0;
+        transform: translateY(28px);
+        transition: opacity 0.7s ease, transform 0.7s ease;
       }
-      .testimonial-name {
-        font-weight: 700;
-        font-size: 0.85rem;
-        color: var(--text-main);
-      }
-      .testimonial-course {
-        font-size: 0.75rem;
-        color: var(--text-muted);
+      .reveal.in-view { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .reveal { opacity: 1; transform: none; transition: none; }
       }
 
       /* ── SECTION ── */
@@ -399,6 +376,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
         margin-top: auto;
         padding-top: 14px;
         border-top: 1px solid #f1f5f9;
@@ -423,6 +402,12 @@
         gap: 5px;
       }
       .btn-open:hover { background: var(--navy); color: white; transform: scale(1.04); }
+      .btn-open:disabled {
+        background: #cbd5e1;
+        color: #64748b;
+        cursor: not-allowed;
+        transform: none !important;
+      }
       .btn-open.done {
         background: #f0fdf4;
         color: #16a34a;
@@ -588,7 +573,7 @@
     </nav>
 
     <!-- HERO -->
-    <section class="hero text-center">
+    <section class="hero text-center reveal">
       <div class="container position-relative">
         <div class="hero-eyebrow"><i class="bi bi-mortarboard-fill me-1"></i>Platform Belajar #1</div>
         <h1>Belajar Hal Baru,<br><em>Setiap Hari.</em></h1>
@@ -600,7 +585,7 @@
           </form>
         </div>
         <div class="hero-stats">
-          <div class="hero-stat"><strong>{{ total_courses }}</strong> Kursus</div>
+          <div class="hero-stat"><strong data-count="{{ total_courses }}">0</strong> Kursus</div>
           {% if avg_rating %}
           <div class="hero-stat"><strong>{{ avg_rating }}<i class="bi bi-star-fill" style="font-size:0.6em; vertical-align:1px;"></i></strong> Rating ({{ total_reviews }} ulasan)</div>
           {% else %}
@@ -611,42 +596,6 @@
       </div>
     </section>
 
-    {% if testimonials %}
-    <section class="testimonial-section">
-      <div class="container">
-        <div class="text-center mb-4">
-          <div class="section-label">Kata Mereka</div>
-          <div class="section-title">Apa Kata Siswa Kami?</div>
-        </div>
-        <div class="row g-4">
-          {% for t in testimonials %}
-          <div class="col-md-6 col-lg-4">
-            <div class="testimonial-card">
-              <div class="testimonial-stars">
-                {% for i in "12345" %}
-                  {% if forloop.counter <= t.rating %}
-                    <i class="bi bi-star-fill"></i>
-                  {% else %}
-                    <i class="bi bi-star"></i>
-                  {% endif %}
-                {% endfor %}
-              </div>
-              <p class="testimonial-text">&ldquo;{{ t.isi_komentar|truncatechars:140 }}&rdquo;</p>
-              <div class="testimonial-author">
-                <div class="testimonial-avatar">{{ t.nama_komentator|slice:":1"|upper }}</div>
-                <div>
-                  <div class="testimonial-name">{{ t.nama_komentator }}</div>
-                  <div class="testimonial-course">{{ t.course.name }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </section>
-    {% endif %}
-
     <!-- CONTENT -->
     <div class="container" style="padding-top: 48px; padding-bottom: 20px;">
 
@@ -656,17 +605,12 @@
         Hasil pencarian untuk: <strong>"{{ query }}"</strong> — {{ courses|length }} kursus ditemukan
         <a href="{% url 'index' %}"><i class="bi bi-x-circle me-1"></i>Hapus filter</a>
       </div>
-      {% else %}
-      <div class="mb-4">
-        <div class="section-label">Semua Kursus</div>
-        <div class="section-title">Pilih Kursus Favoritmu</div>
-      </div>
       {% endif %}
 
       <div class="row g-4">
         {% for c in courses %}
         <div class="col-md-6 col-lg-4">
-          <div class="course-card">
+          <div class="course-card reveal" style="transition-delay: {{ forloop.counter0 }}00ms;">
             <div class="course-img-wrap">
               <img src="{{ c.image_url|optimize_img }}" alt="{{ c.name }}" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/600x400/0a0f2c/ffffff?text={{ c.name|urlencode }}'"/>
               <div class="course-img-overlay"></div>
@@ -679,6 +623,21 @@
             <div class="card-body-custom">
               <div class="card-title-custom">{{ c.name }}</div>
 
+              <div class="card-rating">
+                {% if c.avg_rating %}
+                  <span class="stars">
+                    {% for i in "12345" %}
+                      {% if forloop.counter <= c.avg_rating %}<i class="bi bi-star-fill"></i>{% else %}<i class="bi bi-star"></i>{% endif %}
+                    {% endfor %}
+                  </span>
+                  <span class="score">{{ c.avg_rating }}</span>
+                  <span class="count">({{ c.review_count }} ulasan)</span>
+                {% else %}
+                  <span class="no-rating"><i class="bi bi-star me-1"></i>Belum ada ulasan</span>
+                {% endif %}
+              </div>
+
+              {% if c.is_enrolled %}
               <div class="progress-wrap">
                 {% if c.total_content == 0 %}
                 <div class="progress-label">
@@ -695,19 +654,38 @@
                 </div>
                 {% endif %}
               </div>
+              {% endif %}
 
               <div class="card-footer-custom">
                 <div class="price-tag">Rp {{ c.price|floatformat:0 }}</div>
-                <a href="{% url 'course_detail' c.id %}"
-                   class="btn-open {% if c.progress_pct == 100 %}done{% endif %}">
-                  {% if c.progress_pct == 100 %}
-                    <i class="bi bi-check-circle-fill"></i> Lihat Lagi
-                  {% elif c.progress_pct > 0 %}
-                    <i class="bi bi-play-circle-fill"></i> Lanjutkan
-                  {% else %}
-                    Buka Materi <i class="bi bi-arrow-right"></i>
-                  {% endif %}
-                </a>
+
+                {% if not logged_in_user %}
+                  <a href="{% url 'login_page' %}" class="btn-open">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                  </a>
+                {% elif not c.is_enrolled %}
+                  <form method="POST" action="{% url 'course_detail' c.id %}">
+                    {% csrf_token %}
+                    <button type="submit" name="ambil_kursus" class="btn-open" style="border:none;" {% if c.slots_left <= 0 %}disabled{% endif %}>
+                      {% if c.slots_left <= 0 %}
+                        <i class="bi bi-x-circle"></i> Kuota Penuh
+                      {% else %}
+                        <i class="bi bi-bag-check-fill"></i> Ambil Kursus
+                      {% endif %}
+                    </button>
+                  </form>
+                {% else %}
+                  <a href="{% url 'course_detail' c.id %}"
+                     class="btn-open {% if c.progress_pct == 100 %}done{% endif %}">
+                    {% if c.progress_pct == 100 %}
+                      <i class="bi bi-check-circle-fill"></i> Lihat Lagi
+                    {% elif c.progress_pct > 0 %}
+                      <i class="bi bi-play-circle-fill"></i> Lanjutkan
+                    {% else %}
+                      Buka Kursus <i class="bi bi-arrow-right"></i>
+                    {% endif %}
+                  </a>
+                {% endif %}
               </div>
             </div>
 
@@ -769,5 +747,40 @@
     </a>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Scroll-reveal: elemen ber-class "reveal" cuma nambah class "in-view"
+      // begitu masuk viewport — animasi fade+slide-up dihandle penuh oleh
+      // CSS transition di atas. Kalau browser gak dukung IntersectionObserver
+      // (sangat jarang), langsung tampilkan semua tanpa animasi (graceful
+      // degradation, konten tidak pernah ke-hide permanen).
+      if ('IntersectionObserver' in window) {
+        const revealObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12 });
+        document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
+      } else {
+        document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in-view'));
+      }
+
+      // Animasi hitung naik buat angka statistik di hero (cth: jumlah
+      // kursus) — cuma kosmetik, datanya sendiri tetap dari server
+      // (data-count diisi server-side, JS cuma menganimasikan tampilannya).
+      document.querySelectorAll('[data-count]').forEach((el) => {
+        const target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        let current = 0;
+        const step = Math.max(1, Math.ceil(target / 30));
+        const tick = () => {
+          current = Math.min(target, current + step);
+          el.textContent = current;
+          if (current < target) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    </script>
   </body>
 </html>
