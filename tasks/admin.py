@@ -53,7 +53,7 @@ class UserAdmin(ImportExportModelAdmin):
 class CourseContentInline(admin.TabularInline):
     model = CourseContent
     extra = 1
-    fields = ('name', 'video_url', 'description')
+    fields = ('name', 'video_url', 'duration_seconds', 'description')
 
 
 # ── Course ────────────────────────────────────────────────
@@ -68,7 +68,7 @@ class CourseAdmin(ImportExportModelAdmin):
 # ── CourseContent ─────────────────────────────────────────
 @admin.register(CourseContent)
 class CourseContentAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'course')
+    list_display = ('name', 'course', 'duration_seconds')
     search_fields = ('name',)
 
 

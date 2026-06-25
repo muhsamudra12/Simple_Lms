@@ -17,6 +17,35 @@ from reportlab.lib.units import cm
 from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 
+# Konfigurasi durasi PREVIEW GRATIS (materi pertama, untuk user yang belum
+# enroll) — dihitung OTOMATIS sebagai persentase dari `duration_seconds`
+# milik CourseContent (kalau diisi admin), supaya admin tidak perlu
+# menghitung manual angka detik preview satu-satu per video. Dibatasi
+# MIN/MAX biar tidak kepanjangan (kasih semua isinya) atau kependekan
+# (gak kelihatan apa-apa).
+PREVIEW_PERCENTAGE = 0.20      # 20% dari total durasi video
+PREVIEW_MIN_SECONDS = 20
+PREVIEW_MAX_SECONDS = 90
+PREVIEW_DEFAULT_SECONDS = 60   # dipakai kalau duration_seconds tidak diisi
+
+
+def _build_preview_url(video_url, duration_seconds):
+    """
+    Bangun URL embed YouTube dengan parameter `end=` supaya video otomatis
+    berhenti di detik tertentu — dipakai HANYA untuk preview gratis materi
+    pertama bagi yang belum enroll. CATATAN PENTING: ini cuma soft-limit
+    sisi client (parameter URL bawaan YouTube), BUKAN proteksi keamanan —
+    video sebenarnya tetap bisa diputar ulang/di-seek manual oleh user
+    yang cukup paham. Untuk tujuan "kasih bocoran materi", ini cukup.
+    """
+    if duration_seconds:
+        preview_seconds = int(duration_seconds * PREVIEW_PERCENTAGE)
+        preview_seconds = max(PREVIEW_MIN_SECONDS, min(PREVIEW_MAX_SECONDS, preview_seconds))
+    else:
+        preview_seconds = PREVIEW_DEFAULT_SECONDS
+    sep = '&' if '?' in video_url else '?'
+    return f"{video_url}{sep}start=0&end={preview_seconds}", preview_seconds
+
 
 def index(request):
     query = request.GET.get('q')
@@ -204,6 +233,23 @@ def detail(request, course_id):
     first_content = contents.first()
     first_content_id = first_content.id if first_content else None
 
+    # URL video yang BENERAN dipakai di <iframe> — dibedain per kondisi:
+    # - Sudah enroll: video penuh, tanpa batasan apapun.
+    # - Belum enroll, ini materi preview gratis (materi pertama): video
+    #   dipotong otomatis sesuai PREVIEW_PERCENTAGE dari duration_seconds.
+    # - Belum enroll, materi lain: tidak perlu URL sama sekali (di
+    #   template dirender sebagai locked-row, bukan <iframe>).
+    preview_seconds = None
+    for content in contents:
+        if is_enrolled:
+            content.display_url = content.video_url
+        elif content.id == first_content_id:
+            content.display_url, preview_seconds = _build_preview_url(
+                content.video_url, content.duration_seconds
+            )
+        else:
+            content.display_url = None
+
     done_ids = set(
         ContentProgress.objects.filter(user_id=user_id, content__course=course).values_list('content_id', flat=True)
     )
@@ -245,6 +291,7 @@ def detail(request, course_id):
         'slots_left': slots_left,
         'enrolled_count': enrolled_count,
         'first_content_id': first_content_id,
+        'preview_seconds': preview_seconds,
         'course_avg_rating': course_avg_rating,
         'course_review_count': course_review_count,
     })

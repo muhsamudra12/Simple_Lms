@@ -165,12 +165,14 @@ class CourseContentOut(Schema):
     name: str
     video_url: str
     description: Optional[str] = None
+    duration_seconds: Optional[int] = None
     course_id: int
 
 class CourseContentIn(Schema):
     name: str
     video_url: str
     description: Optional[str] = None
+    duration_seconds: Optional[int] = None
     course_id: int
 
 class CommentOut(Schema):
@@ -317,7 +319,10 @@ def list_contents(request): return list(CourseContent.objects.all())
 @api.post("/contents", tags=["Contents"], response=CourseContentOut, auth=GlobalAuth())
 def create_content(request, payload: CourseContentIn):
     course = get_object_or_404(Course, id=payload.course_id)
-    return CourseContent.objects.create(name=payload.name, video_url=payload.video_url, description=payload.description, course=course)
+    return CourseContent.objects.create(
+        name=payload.name, video_url=payload.video_url, description=payload.description,
+        duration_seconds=payload.duration_seconds, course=course,
+    )
 
 @api.delete("/contents/{content_id}", tags=["Contents"], auth=GlobalAuth())
 def delete_content(request, content_id: int):

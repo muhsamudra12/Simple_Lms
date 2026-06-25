@@ -32,6 +32,17 @@ class CourseContent(models.Model):
     video_url = models.URLField(help_text="Masukkan link embed YouTube")
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='contents')  # Relasi ke Course
     description = models.TextField(null=True, blank=True)
+    duration_seconds = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="Durasi Video (detik)",
+        help_text=(
+            "Opsional. Isi total durasi video dalam detik (misal video 5:25 "
+            "= 325 detik). Kalau diisi, durasi preview gratis materi pertama "
+            "dihitung OTOMATIS sebagai persentase dari angka ini (lihat "
+            "PREVIEW_PERCENTAGE di views.py). Kalau dikosongkan, dipakai "
+            "durasi preview default (PREVIEW_DEFAULT_SECONDS)."
+        ),
+    )
 
     class Meta:
         # Sebelumnya TIDAK ada ordering eksplisit, jadi urutan materi

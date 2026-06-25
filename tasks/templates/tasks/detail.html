@@ -31,6 +31,7 @@
         font-family: 'Plus Jakarta Sans', sans-serif;
         color: var(--text-main);
         margin: 0;
+        overflow-x: hidden;
       }
 
       /* ── NAVBAR ── */
@@ -86,7 +87,8 @@
         font-weight: 600;
         display: flex;
         align-items: center;
-        gap: 10px;
+        flex-wrap: wrap;
+        gap: 6px 10px;
         margin-bottom: 12px;
       }
       .alert-custom:last-child { margin-bottom: 0; }
@@ -167,6 +169,7 @@
         padding: 14px 20px;
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 10px;
       }
       .video-header h5 {
@@ -174,6 +177,9 @@
         font-size: 0.95rem;
         font-weight: 700;
         margin: 0;
+        flex: 1 1 auto;
+        min-width: 0;
+        word-break: break-word;
       }
       .video-header .play-icon {
         width: 30px;
@@ -329,6 +335,7 @@
       .curriculum-badge-row {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 8px;
         font-size: 0.8rem;
         font-weight: 700;
@@ -371,7 +378,14 @@
         font-size: 0.85rem;
         flex-shrink: 0;
       }
-      .locked-row-title { font-size: 0.88rem; font-weight: 600; color: var(--text-main); flex-grow: 1; }
+      .locked-row-title {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text-main);
+        flex: 1 1 auto;
+        min-width: 0;
+        word-break: break-word;
+      }
       .selling-points {
         background: #f8fafc;
         border-radius: 10px;
@@ -746,12 +760,12 @@
               {% if content.id in done_ids %}
                 <span class="badge-done-mini"><i class="bi bi-check-circle-fill"></i> Selesai</span>
               {% elif not is_enrolled %}
-                <span class="badge-preview-mini"><i class="bi bi-unlock-fill"></i> Preview Gratis</span>
+                <span class="badge-preview-mini"><i class="bi bi-unlock-fill"></i> Preview Gratis ({{ preview_seconds }}s)</span>
               {% endif %}
             </div>
             <div class="ratio ratio-16x9">
               <iframe
-                src="{{ content.video_url }}"
+                src="{{ content.display_url }}"
                 title="{{ content.name }}"
                 frameborder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
