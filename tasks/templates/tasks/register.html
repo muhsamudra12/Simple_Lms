@@ -138,16 +138,16 @@
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label">Nama Lengkap</label>
-            <input type="text" name="fullname" class="form-control" placeholder="Nama kamu" required autofocus />
+            <input type="text" name="fullname" class="form-control" placeholder="Nama kamu" value="{{ fullname|default:'' }}" required autofocus />
           </div>
           <div class="row-2 mb-3">
             <div>
               <label class="form-label">Username</label>
-              <input type="text" name="username" class="form-control" placeholder="username" required />
+              <input type="text" name="username" class="form-control" placeholder="username" value="{{ username|default:'' }}" required />
             </div>
             <div>
               <label class="form-label">Email</label>
-              <input type="email" name="email" class="form-control" placeholder="email@kamu.com" required />
+              <input type="email" name="email" class="form-control" placeholder="email@kamu.com" value="{{ email|default:'' }}" required />
             </div>
           </div>
           <div class="mb-4">

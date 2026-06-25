@@ -134,7 +134,9 @@ def login_page(request):
         attempts = cache.get(throttle_key, 0)
         if attempts >= 5:
             messages.error(request, "Terlalu banyak percobaan login. Coba lagi dalam 1 menit.")
-            return render(request, 'tasks/login.html')
+            # Username tetap ditampilkan ulang biar nggak perlu ngetik dari nol
+            # (password SENGAJA tidak dikembalikan, demi keamanan).
+            return render(request, 'tasks/login.html', {'username': username})
 
         user = User.objects.filter(username=username).first()
         if user and check_password(password, user.password):
@@ -145,6 +147,7 @@ def login_page(request):
         else:
             cache.set(throttle_key, attempts + 1, 60)
             messages.error(request, "Username atau password salah.")
+            return render(request, 'tasks/login.html', {'username': username})
 
     return render(request, 'tasks/login.html')
 
@@ -159,10 +162,29 @@ def register_page(request):
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '')
 
+        # Form sticky: kalau gagal, field selain password ditampilkan ulang
+        # biar nggak perlu ngetik dari nol (password TIDAK pernah di-echo
+        # balik, demi keamanan).
+        sticky = {'username': username, 'fullname': fullname, 'email': email}
+
+        # Rate-limit — sebelumnya form registrasi web belum dibatasi sama
+        # sekali (beda dengan endpoint API /auth/register yang sudah ada
+        # throttle), jadi bisa dipakai bikin akun spam tanpa batas.
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        throttle_key = f"register_throttle_{ip}"
+        attempts = cache.get(throttle_key, 0)
+        if attempts >= 5:
+            messages.error(request, "Terlalu banyak percobaan registrasi. Coba lagi dalam 1 menit.")
+            return render(request, 'tasks/register.html', sticky)
+
         if not all([username, fullname, email, password]):
+            cache.set(throttle_key, attempts + 1, 60)
             messages.error(request, "Semua field wajib diisi.")
+            return render(request, 'tasks/register.html', sticky)
         elif User.objects.filter(username=username).exists():
+            cache.set(throttle_key, attempts + 1, 60)
             messages.error(request, "Username sudah digunakan, coba yang lain.")
+            return render(request, 'tasks/register.html', sticky)
         else:
             User.objects.create(
                 username=username,
@@ -170,6 +192,7 @@ def register_page(request):
                 email=email,
                 password=make_password(password),
             )
+            cache.delete(throttle_key)
             messages.success(request, "Registrasi berhasil! Silakan login.")
             return redirect('login_page')
 
