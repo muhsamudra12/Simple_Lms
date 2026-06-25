@@ -75,8 +75,8 @@ class CourseContentAdmin(ImportExportModelAdmin):
 # ── Comment ───────────────────────────────────────────────
 @admin.register(Comment)
 class CommentAdmin(ImportExportModelAdmin):
-    list_display = ('nama_komentator', 'course', 'isi_komentar_singkat', 'dibuat_pada')
-    list_filter = ('course', 'dibuat_pada')
+    list_display = ('nama_komentator', 'course', 'rating', 'isi_komentar_singkat', 'dibuat_pada')
+    list_filter = ('rating', 'course', 'dibuat_pada')
     search_fields = ('nama_komentator', 'isi_komentar', 'course__name')
     ordering = ('-dibuat_pada',)
     readonly_fields = ('dibuat_pada',)

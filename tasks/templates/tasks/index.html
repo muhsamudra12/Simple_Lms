@@ -234,6 +234,60 @@
         margin-bottom: 2px;
       }
 
+      /* ── TESTIMONIAL SECTION ───────────────────────────────── */
+      .testimonial-section {
+        padding: 56px 0 8px;
+      }
+      .testimonial-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+      }
+      .testimonial-stars {
+        color: var(--accent);
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+      }
+      .testimonial-text {
+        color: var(--text-main);
+        font-size: 0.9rem;
+        line-height: 1.6;
+        flex-grow: 1;
+        margin-bottom: 16px;
+      }
+      .testimonial-author {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .testimonial-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--navy);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+      }
+      .testimonial-name {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--text-main);
+      }
+      .testimonial-course {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
       /* ── SECTION ── */
       .section-label {
         font-size: 0.78rem;
@@ -546,12 +600,52 @@
           </form>
         </div>
         <div class="hero-stats">
-          <div class="hero-stat"><strong>{{ courses|length }}</strong> Kursus</div>
+          <div class="hero-stat"><strong>{{ total_courses }}</strong> Kursus</div>
+          {% if avg_rating %}
+          <div class="hero-stat"><strong>{{ avg_rating }}<i class="bi bi-star-fill" style="font-size:0.6em; vertical-align:1px;"></i></strong> Rating ({{ total_reviews }} ulasan)</div>
+          {% else %}
           <div class="hero-stat"><strong>100%</strong> Online</div>
+          {% endif %}
           <div class="hero-stat"><strong>∞</strong> Akses Selamanya</div>
         </div>
       </div>
     </section>
+
+    {% if testimonials %}
+    <section class="testimonial-section">
+      <div class="container">
+        <div class="text-center mb-4">
+          <div class="section-label">Kata Mereka</div>
+          <div class="section-title">Apa Kata Siswa Kami?</div>
+        </div>
+        <div class="row g-4">
+          {% for t in testimonials %}
+          <div class="col-md-6 col-lg-4">
+            <div class="testimonial-card">
+              <div class="testimonial-stars">
+                {% for i in "12345" %}
+                  {% if forloop.counter <= t.rating %}
+                    <i class="bi bi-star-fill"></i>
+                  {% else %}
+                    <i class="bi bi-star"></i>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <p class="testimonial-text">&ldquo;{{ t.isi_komentar|truncatechars:140 }}&rdquo;</p>
+              <div class="testimonial-author">
+                <div class="testimonial-avatar">{{ t.nama_komentator|slice:":1"|upper }}</div>
+                <div>
+                  <div class="testimonial-name">{{ t.nama_komentator }}</div>
+                  <div class="testimonial-course">{{ t.course.name }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
 
     <!-- CONTENT -->
     <div class="container" style="padding-top: 48px; padding-bottom: 20px;">

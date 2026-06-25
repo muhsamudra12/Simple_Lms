@@ -18,7 +18,14 @@ from reportlab.pdfgen import canvas
 
 def index(request):
     query = request.GET.get('q')
-    courses = Course.objects.select_related('teacher').all()
+    # Sebelumnya queryset ini TIDAK punya order_by() eksplisit, padahal
+    # langsung dipaginate — Django sampai ngasih peringatan
+    # (UnorderedObjectListWarning) karena tanpa urutan pasti, hasil per
+    # halaman bisa TIDAK KONSISTEN (ada course yang ke-skip atau dobel
+    # muncul di halaman lain) tergantung urutan internal database, dan
+    # bisa beda-beda tiap request. Diurutkan terbaru dulu (-id) supaya
+    # pasti konsisten dan course baru lebih kelihatan di halaman depan.
+    courses = Course.objects.select_related('teacher').order_by('-id')
 
     if query:
         courses = courses.filter(name__icontains=query)
@@ -44,10 +51,32 @@ def index(request):
         else:
             c.progress_pct = 0
 
+    # Statistik hero section — SEBELUMNYA pakai `courses|length` di
+    # template, yang cuma ngitung jumlah kursus DI HALAMAN PAGINATION INI
+    # SAJA (maks 9), bukan total semua kursus. Jadi kalau ada >9 kursus,
+    # angka yang ditampilkan SALAH (kurang). Dihitung di sini pakai
+    # `paginator.count` (total asli, lepas dari pagination) supaya benar.
+    total_courses = paginator.count
+    rating_stats = Comment.objects.aggregate(avg_rating=Avg('rating'), total_reviews=Count('id'))
+
+    # Testimoni di homepage — diambil dari komentar course dengan rating
+    # bagus (4-5 bintang) supaya yang ditampilkan ke pengunjung baru
+    # benar-benar yang positif, bukan asal komentar terbaru yang bisa
+    # saja keluhan/rating rendah (kurang cocok buat "menarik perhatian").
+    testimonials = (
+        Comment.objects.filter(rating__gte=4)
+        .select_related('course')
+        .order_by('-dibuat_pada')[:6]
+    )
+
     return render(request, 'tasks/index.html', {
         'courses': page_obj,
         'page_obj': page_obj,
         'query': query,
+        'total_courses': total_courses,
+        'avg_rating': round(rating_stats['avg_rating'], 1) if rating_stats['avg_rating'] else None,
+        'total_reviews': rating_stats['total_reviews'],
+        'testimonials': testimonials,
     })
 
 
@@ -101,10 +130,20 @@ def detail(request, course_id):
             if not nama or not isi:
                 messages.error(request, "Nama dan isi komentar tidak boleh kosong.")
             else:
+                # Rating dari form bintang — divalidasi & dipaksa ke rentang
+                # 1-5. Kalau user kirim request manual tanpa lewat UI (atau
+                # field-nya ke-skip), default ke 5 daripada 0/invalid.
+                try:
+                    rating = int(request.POST.get('rating', 5))
+                except (TypeError, ValueError):
+                    rating = 5
+                rating = max(1, min(5, rating))
+
                 Comment.objects.create(
                     course=course,
                     nama_komentator=nama,
-                    isi_komentar=isi
+                    isi_komentar=isi,
+                    rating=rating,
                 )
                 cache.set(throttle_key, True, 10)  # 1 komentar / 10 detik per IP
                 messages.success(request, "Komentar berhasil dikirim!")

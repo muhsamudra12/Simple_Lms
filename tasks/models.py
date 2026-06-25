@@ -60,6 +60,12 @@ class Comment(models.Model):
     )
     nama_komentator = models.CharField(max_length=100, verbose_name="Nama")
     isi_komentar = models.TextField(verbose_name="Komentar")
+    rating = models.PositiveSmallIntegerField(
+        default=5,
+        choices=[(1, '1'), (2, '2'), (3, '3'), (4, '4'), (5, '5')],
+        verbose_name="Rating",
+        help_text="Rating 1-5 bintang.",
+    )
     dibuat_pada = models.DateTimeField(auto_now_add=True, verbose_name="Waktu Komentar")
 
     class Meta:

@@ -360,6 +360,36 @@
       }
       .btn-submit-comment:hover { background: var(--navy); transform: scale(1.03); }
 
+      /* ── Star Rating (form input) ──────────────────────────────
+         Trik CSS murni: 5 radio button + label ikon bintang, urutan
+         HTML dari 5 ke 1 supaya bisa pakai selector "~" (sibling
+         setelahnya) buat nge-highlight bintang ke kiri saat di-hover/
+         dipilih, tanpa perlu JavaScript sama sekali. */
+      .star-rating {
+        display: flex;
+        flex-direction: row-reverse;
+        gap: 4px;
+        font-size: 1.6rem;
+        width: fit-content;
+      }
+      .star-rating input { display: none; }
+      .star-rating label {
+        color: #e2e8f0;
+        cursor: pointer;
+        transition: color 0.15s;
+      }
+      .star-rating input:checked ~ label,
+      .star-rating label:hover,
+      .star-rating label:hover ~ label {
+        color: var(--accent);
+      }
+
+      .comment-stars {
+        color: var(--accent);
+        font-size: 0.78rem;
+        margin-bottom: 8px;
+      }
+
       /* Kartu komentar */
       .comment-card {
         background: white;
@@ -590,6 +620,16 @@
                 <form method="POST">
                   {% csrf_token %}
                   <div class="mb-3">
+                    <label class="form-label-custom">Rating Kamu</label>
+                    <div class="star-rating">
+                      <input type="radio" id="star5" name="rating" value="5" checked /><label for="star5"><i class="bi bi-star-fill"></i></label>
+                      <input type="radio" id="star4" name="rating" value="4" /><label for="star4"><i class="bi bi-star-fill"></i></label>
+                      <input type="radio" id="star3" name="rating" value="3" /><label for="star3"><i class="bi bi-star-fill"></i></label>
+                      <input type="radio" id="star2" name="rating" value="2" /><label for="star2"><i class="bi bi-star-fill"></i></label>
+                      <input type="radio" id="star1" name="rating" value="1" /><label for="star1"><i class="bi bi-star-fill"></i></label>
+                    </div>
+                  </div>
+                  <div class="mb-3">
                     <label class="form-label-custom">Nama Kamu</label>
                     <input
                       type="text"
@@ -627,6 +667,15 @@
                   <span class="comment-time">
                     <i class="bi bi-clock me-1"></i>{{ comment.dibuat_pada|date:"d M Y, H:i" }}
                   </span>
+                </div>
+                <div class="comment-stars">
+                  {% for i in "12345" %}
+                    {% if forloop.counter <= comment.rating %}
+                      <i class="bi bi-star-fill"></i>
+                    {% else %}
+                      <i class="bi bi-star"></i>
+                    {% endif %}
+                  {% endfor %}
                 </div>
                 <p class="comment-text">{{ comment.isi_komentar }}</p>
               </div>

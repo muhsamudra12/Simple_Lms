@@ -178,11 +178,13 @@ class CommentOut(Schema):
     course_id: int
     nama_komentator: str
     isi_komentar: str
+    rating: int
 
 class CommentIn(Schema):
     course_id: int
     nama_komentator: str
     isi_komentar: str
+    rating: int = 5
 
 class RegisterIn(Schema):
     username: str
@@ -329,7 +331,11 @@ def list_comments(request): return list(Comment.objects.all())
 @simple_throttle(rate_limit=10, period=60)
 def create_comment(request, payload: CommentIn):
     course = get_object_or_404(Course, id=payload.course_id)
-    return Comment.objects.create(course=course, nama_komentator=payload.nama_komentator, isi_komentar=payload.isi_komentar)
+    rating = max(1, min(5, payload.rating))
+    return Comment.objects.create(
+        course=course, nama_komentator=payload.nama_komentator,
+        isi_komentar=payload.isi_komentar, rating=rating,
+    )
 
 @api.delete("/comments/{comment_id}", tags=["Comments"], auth=GlobalAuth())
 def delete_comment(request, comment_id: int):
