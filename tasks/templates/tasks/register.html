@@ -113,6 +113,22 @@
       }
       .alert-success-custom { background: #f0fdf4; color: #15803d; border-left: 4px solid #22c55e; }
       .alert-error-custom { background: #fef2f2; color: #b91c1c; border-left: 4px solid #ef4444; }
+      .password-wrap { position: relative; }
+      .password-wrap input { padding-right: 42px; }
+      .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        font-size: 1rem;
+        line-height: 1;
+      }
+      .password-toggle:hover { color: var(--blue); }
       .row-2 { display: flex; gap: 12px; }
       .row-2 > div { flex: 1; }
     </style>
@@ -152,7 +168,12 @@
           </div>
           <div class="mb-4">
             <label class="form-label">Password</label>
-            <input type="password" name="password" class="form-control" placeholder="••••••••" required minlength="6" />
+            <div class="password-wrap">
+              <input type="password" name="password" id="passwordInput" class="form-control" placeholder="••••••••" required minlength="6" />
+              <button type="button" class="password-toggle" onclick="togglePassword('passwordInput', this)">
+                <i class="bi bi-eye-fill"></i>
+              </button>
+            </div>
           </div>
           <button type="submit" class="btn-auth"><i class="bi bi-person-plus-fill me-1"></i>Daftar Sekarang</button>
         </form>
@@ -162,5 +183,18 @@
         </div>
       </div>
     </div>
+    <script>
+      function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+          input.type = 'text';
+          icon.className = 'bi bi-eye-slash-fill';
+        } else {
+          input.type = 'password';
+          icon.className = 'bi bi-eye-fill';
+        }
+      }
+    </script>
   </body>
 </html>

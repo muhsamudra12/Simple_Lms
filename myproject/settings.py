@@ -166,6 +166,20 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# MEDIA — dipakai untuk file yang di-upload USER (foto profil), beda
+# dengan STATIC (file aset bawaan project seperti CSS/JS). Sebelumnya
+# belum ada konfigurasi MEDIA sama sekali di project ini.
+#
+# CATATAN PRODUCTION: kalau hosting di platform dengan filesystem
+# ephemeral (Railway tanpa persistent volume), file di MEDIA_ROOT akan
+# HILANG setiap kali ada deploy baru — beda dengan database (Postgres)
+# yang persisten. Untuk skala project ini hal itu cukup diterima
+# (foto profil reset tiap deploy), tapi untuk produksi sungguhan
+# sebaiknya pakai object storage (S3-compatible) atau attach volume
+# persistent ke folder media/.
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # CACHES — dipakai untuk fitur throttling (rate-limit) di tasks/api.py.
 # Default Django (LocMemCache) tersimpan di MEMORI PER-PROCESS — kalau
 # Gunicorn jalan dengan lebih dari 1 worker (otomatis terjadi kalau

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profil Saya | LMS Academy</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --navy: #0a0f2c;
+        --navy-mid: #141a3d;
+        --blue: #2563eb;
+        --blue-light: #3b82f6;
+        --accent: #f59e0b;
+        --accent-light: #fcd34d;
+        --surface: #f0f4ff;
+        --surface-card: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --radius: 18px;
+      }
+      * { font-family: 'Plus Jakarta Sans', sans-serif; }
+      body { background: var(--surface); min-height: 100vh; }
+      .topbar {
+        background: var(--navy);
+        padding: 16px 0;
+      }
+      .topbar a {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .brand-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.3rem;
+        color: #fff;
+        text-decoration: none;
+      }
+      .brand-link span { color: var(--accent); }
+      .profile-card {
+        background: var(--surface-card);
+        border-radius: var(--radius);
+        padding: 32px;
+        max-width: 560px;
+        margin: 40px auto;
+        box-shadow: 0 4px 24px rgba(10,15,44,0.08);
+      }
+      .avatar-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 28px;
+      }
+      .avatar-img {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--accent);
+        background: var(--surface);
+      }
+      .avatar-placeholder {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background: var(--navy);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        font-weight: 800;
+        border: 3px solid var(--accent);
+      }
+      .avatar-upload-btn {
+        margin-top: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--blue);
+        cursor: pointer;
+      }
+      .avatar-upload-btn input { display: none; }
+      .section-title {
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin: 24px 0 12px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 8px;
+      }
+      .form-label { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+      .form-control { border-radius: 10px; padding: 10px 14px; border: 1px solid #e2e8f0; font-size: 0.9rem; }
+      .form-control:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+      .btn-save {
+        background: var(--accent);
+        color: var(--navy);
+        font-weight: 700;
+        border-radius: 10px;
+        padding: 11px;
+        border: none;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .btn-save:hover { background: var(--accent-light); }
+      .password-wrap { position: relative; }
+      .password-wrap input { padding-right: 42px; }
+      .password-toggle {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;
+      }
+      .password-toggle:hover { color: var(--blue); }
+      .alert-custom {
+        border: none; border-radius: 10px; padding: 12px 16px; font-size: 0.825rem;
+        font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
+      }
+      .alert-success-custom { background: #f0fdf4; color: #15803d; border-left: 4px solid #22c55e; }
+      .alert-error-custom { background: #fef2f2; color: #b91c1c; border-left: 4px solid #ef4444; }
+      .hint-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="container d-flex justify-content-between align-items-center">
+        <a href="{% url 'index' %}" class="brand-link"><i class="bi bi-mortarboard-fill"></i>LMS <span>Academy</span></a>
+        <a href="{% url 'index' %}"><i class="bi bi-arrow-left me-1"></i>Kembali ke Beranda</a>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="profile-card">
+        <h4 class="fw-bold mb-1">Profil Saya</h4>
+        <p class="text-muted" style="font-size:0.875rem;">Kelola informasi akun dan foto profilmu.</p>
+
+        {% if messages %}
+          {% for message in messages %}
+            {% if message.tags == 'error' %}
+            <div class="alert-custom alert-error-custom"><i class="bi bi-exclamation-circle-fill"></i> {{ message }}</div>
+            {% else %}
+            <div class="alert-custom alert-success-custom"><i class="bi bi-patch-check-fill"></i> {{ message }}</div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <div class="avatar-wrap">
+            {% if profile_user.profile_image %}
+              <img src="{{ profile_user.profile_image.url }}" class="avatar-img" id="avatarPreview" alt="Foto profil" />
+            {% else %}
+              <div class="avatar-placeholder" id="avatarPlaceholder">{{ profile_user.fullname|slice:":1"|upper }}</div>
+              <img src="" class="avatar-img d-none" id="avatarPreview" alt="Foto profil" />
+            {% endif %}
+            <label class="avatar-upload-btn">
+              <i class="bi bi-camera-fill me-1"></i>Ganti Foto
+              <input type="file" name="profile_image" accept="image/*" id="avatarInput" />
+            </label>
+            <div class="hint-text">JPG/PNG, maksimal 2MB</div>
+          </div>
+
+          <div class="section-title">Informasi Dasar</div>
+          <div class="mb-3">
+            <label class="form-label">Nama Lengkap</label>
+            <input type="text" name="fullname" class="form-control" value="{{ profile_user.fullname }}" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" value="{{ profile_user.username }}" disabled />
+            <div class="hint-text">Username tidak bisa diubah.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ profile_user.email }}" required />
+          </div>
+
+          <div class="section-title">Ganti Password (opsional)</div>
+          <div class="mb-3">
+            <label class="form-label">Password Lama</label>
+            <div class="password-wrap">
+              <input type="password" name="current_password" id="currentPw" class="form-control" placeholder="Isi cuma kalau mau ganti password" />
+              <button type="button" class="password-toggle" onclick="togglePassword('currentPw', this)"><i class="bi bi-eye-fill"></i></button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password Baru</label>
+            <div class="password-wrap">
+              <input type="password" name="new_password" id="newPw" class="form-control" placeholder="Minimal 6 karakter" />
+              <button type="button" class="password-toggle" onclick="togglePassword('newPw', this)"><i class="bi bi-eye-fill"></i></button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Konfirmasi Password Baru</label>
+            <div class="password-wrap">
+              <input type="password" name="confirm_password" id="confirmPw" class="form-control" placeholder="Ulangi password baru" />
+              <button type="button" class="password-toggle" onclick="togglePassword('confirmPw', this)"><i class="bi bi-eye-fill"></i></button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-save"><i class="bi bi-check-circle-fill me-1"></i>Simpan Perubahan</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+          input.type = 'text';
+          icon.className = 'bi bi-eye-slash-fill';
+        } else {
+          input.type = 'password';
+          icon.className = 'bi bi-eye-fill';
+        }
+      }
+
+      document.getElementById('avatarInput').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (evt) {
+          const preview = document.getElementById('avatarPreview');
+          preview.src = evt.target.result;
+          preview.classList.remove('d-none');
+          const placeholder = document.getElementById('avatarPlaceholder');
+          if (placeholder) placeholder.classList.add('d-none');
+        };
+        reader.readAsDataURL(file);
+      });
+    </script>
+  </body>
+</html>

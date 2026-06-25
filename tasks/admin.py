@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password, identify_hasher
+from django.utils.html import format_html
 from .models import User, Course, CourseContent, Comment, CourseMember, Enrollment
 # Impor library import_export
 from import_export import resources
@@ -20,6 +21,10 @@ class UserResource(resources.ModelResource):
     """
     class Meta:
         model = User
+        # profile_image (ImageField) di-exclude dari CSV import/export —
+        # file gambar tidak bisa direpresentasikan sebagai teks CSV biasa.
+        # Import/export CSV cuma untuk data teks (username, fullname, dst).
+        exclude = ('profile_image',)
 
     def before_import_row(self, row, **kwargs):
         password = row.get('password')
@@ -34,8 +39,14 @@ class UserResource(resources.ModelResource):
 @admin.register(User)
 class UserAdmin(ImportExportModelAdmin):
     resource_classes = [UserResource]
-    list_display = ('fullname', 'username', 'email')
+    list_display = ('fullname', 'username', 'email', 'profile_image_preview')
     search_fields = ('fullname', 'username', 'email')
+
+    def profile_image_preview(self, obj):
+        if obj.profile_image:
+            return format_html('<img src="{}" style="height:32px;width:32px;border-radius:50%;object-fit:cover;" />', obj.profile_image.url)
+        return "—"
+    profile_image_preview.short_description = "Foto"
 
 
 # ── CourseContent (Inline di dalam Course) ─────────────────

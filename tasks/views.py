@@ -203,3 +203,82 @@ def logout_view(request):
     request.session.pop('user_id', None)
     messages.success(request, "Kamu berhasil logout.")
     return redirect('index')
+
+
+def profile_page(request):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        messages.error(request, "Silakan login dulu untuk mengakses halaman ini.")
+        return redirect('login_page')
+
+    user = get_object_or_404(User, id=user_id)
+
+    if request.method == 'POST':
+        fullname = request.POST.get('fullname', '').strip()
+        email = request.POST.get('email', '').strip()
+        current_password = request.POST.get('current_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        if not fullname or not email:
+            messages.error(request, "Nama dan email tidak boleh kosong.")
+            return render(request, 'tasks/profile.html', {'profile_user': user})
+
+        # Ganti password itu OPSIONAL — cuma diproses kalau field current_password
+        # diisi. Wajib cocok dulu dengan password lama sebelum boleh diganti,
+        # supaya orang yang numpang lewat di sesi login yang lagi terbuka
+        # (misal di komputer bersama) tidak bisa asal ganti password tanpa
+        # tahu password aslinya.
+        if current_password:
+            ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+            throttle_key = f"profile_pw_throttle_{user.id}_{ip}"
+            attempts = cache.get(throttle_key, 0)
+            if attempts >= 5:
+                messages.error(request, "Terlalu banyak percobaan. Coba lagi dalam 1 menit.")
+                return render(request, 'tasks/profile.html', {'profile_user': user})
+
+            if not check_password(current_password, user.password):
+                cache.set(throttle_key, attempts + 1, 60)
+                messages.error(request, "Password lama yang kamu masukkan salah.")
+                return render(request, 'tasks/profile.html', {'profile_user': user})
+
+            cache.delete(throttle_key)
+
+            if not new_password:
+                messages.error(request, "Isi password baru kalau ingin menggantinya.")
+                return render(request, 'tasks/profile.html', {'profile_user': user})
+            if new_password != confirm_password:
+                messages.error(request, "Konfirmasi password baru tidak cocok.")
+                return render(request, 'tasks/profile.html', {'profile_user': user})
+            if len(new_password) < 6:
+                messages.error(request, "Password baru minimal 6 karakter.")
+                return render(request, 'tasks/profile.html', {'profile_user': user})
+
+            user.password = make_password(new_password)
+
+        # Validasi username/email unik milik orang lain
+        if User.objects.filter(email=email).exclude(id=user.id).exists():
+            messages.error(request, "Email itu sudah dipakai akun lain.")
+            return render(request, 'tasks/profile.html', {'profile_user': user})
+
+        user.fullname = fullname
+        user.email = email
+
+        # Upload foto profil — opsional, cuma diproses kalau user benar-benar
+        # pilih file baru. Validasi tipe & ukuran file biar tidak sembarang
+        # file besar/non-gambar ke-upload.
+        new_image = request.FILES.get('profile_image')
+        if new_image:
+            if not new_image.content_type.startswith('image/'):
+                messages.error(request, "File yang diupload harus berupa gambar.")
+                return render(request, 'tasks/profile.html', {'profile_user': user})
+            if new_image.size > 2 * 1024 * 1024:
+                messages.error(request, "Ukuran gambar maksimal 2MB.")
+                return render(request, 'tasks/profile.html', {'profile_user': user})
+            user.profile_image = new_image
+
+        user.save()
+        messages.success(request, "Profil berhasil diperbarui.")
+        return redirect('profile_page')
+
+    return render(request, 'tasks/profile.html', {'profile_user': user})

@@ -521,7 +521,7 @@
             <li class="nav-item"><a class="nav-link text-success" href="/silk/" target="_blank"><i class="bi bi-cpu me-1"></i>Silk</a></li>
             <li class="nav-item"><a class="nav-link text-warning" href="/api/v1/docs" target="_blank"><i class="bi bi-code-slash me-1"></i>Swagger Docs</a></li>
             {% if logged_in_user %}
-              <li class="nav-item ms-2"><span class="nav-link text-light"><i class="bi bi-person-circle me-1"></i>{{ logged_in_user.fullname }}</span></li>
+              <li class="nav-item ms-2"><a href="{% url 'profile_page' %}" class="nav-link text-light"><i class="bi bi-person-circle me-1"></i>{{ logged_in_user.fullname }}</a></li>
               <li class="nav-item"><a href="{% url 'logout_view' %}" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-1"></i>Logout</a></li>
             {% else %}
               <li class="nav-item ms-2"><a href="{% url 'login_page' %}" class="nav-link"><i class="bi bi-box-arrow-in-right me-1"></i>Masuk</a></li>
