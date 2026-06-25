@@ -212,6 +212,14 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# SILK SECURITY — sebelumnya TIDAK ADA pembatasan akses sama sekali di
+# /silk/, artinya siapapun (bahkan yang belum login) bisa lihat semua
+# query SQL & detail request internal. Sekarang dibatasi cuma staff
+# Django (akun yang juga bisa akses /admin/).
+SILKY_AUTHENTICATION = True
+SILKY_AUTHORISATION = True
+SILKY_PERMISSIONS = lambda user: user.is_staff
+
 # ─── JWT Config (django-ninja-simple-jwt) ───────────────────
 # Project ini pakai model User kustom (tasks.models.User), bukan
 # django.contrib.auth.User — jadi claim map disesuaikan ke field

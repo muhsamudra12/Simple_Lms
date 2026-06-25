@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password, identify_hasher
 from django.utils.html import format_html
-from .models import User, Course, CourseContent, Comment, CourseMember, Enrollment
+from .models import User, Course, CourseContent, Comment, CourseMember, Enrollment, ContentProgress
 # Impor library import_export
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
@@ -100,3 +100,20 @@ class EnrollmentAdmin(ImportExportModelAdmin):
     list_display = ('student', 'course', 'status')
     list_filter = ('status', 'course')
     search_fields = ('student__username', 'student__fullname', 'course__name')
+
+
+# ── ContentProgress (Progress Materi per User) ──────────────
+# Sebelumnya status "selesai kursus" cuma disimpan di session browser,
+# jadi sama sekali tidak bisa dilihat/diedit lewat Admin. Sekarang
+# datanya benar-benar di database, jadi bisa di-manage langsung di sini
+# (misal kalau ada siswa yang minta ditandai selesai manual oleh admin).
+@admin.register(ContentProgress)
+class ContentProgressAdmin(ImportExportModelAdmin):
+    list_display = ('user', 'content', 'get_course', 'completed_at')
+    list_filter = ('content__course', 'completed_at')
+    search_fields = ('user__username', 'user__fullname', 'content__name', 'content__course__name')
+    autocomplete_fields = ['user', 'content']
+
+    def get_course(self, obj):
+        return obj.content.course
+    get_course.short_description = 'Kursus'

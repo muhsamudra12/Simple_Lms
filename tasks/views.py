@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Course, Comment, User
+from .models import Course, Comment, User, CourseContent, ContentProgress
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.paginator import Paginator
@@ -24,13 +24,23 @@ def index(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    completed_courses = request.session.get('completed_courses', [])
+    # Progress per kursus sekarang dihitung dari ContentProgress di
+    # database (per-video, milik user yang login), bukan dari session
+    # browser lagi — sebelumnya progress hilang kalau ganti device/clear
+    # cookie, dan tidak bisa dilihat/diedit dari Admin sama sekali.
+    user_id = request.session.get('user_id')
+    for c in page_obj:
+        total = c.contents.count()
+        if user_id and total > 0:
+            done = ContentProgress.objects.filter(user_id=user_id, content__course=c).count()
+            c.progress_pct = int(done / total * 100)
+        else:
+            c.progress_pct = 0
 
     return render(request, 'tasks/index.html', {
         'courses': page_obj,
         'page_obj': page_obj,
         'query': query,
-        'completed_courses': completed_courses
     })
 
 
@@ -38,16 +48,27 @@ def detail(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     comments = course.comments.all()
 
+    # Materi kursus sekarang wajib login dulu — sebelumnya siapapun
+    # (termasuk yang belum daftar sama sekali) bisa langsung buka & nonton
+    # semua video tanpa batasan apapun.
+    user_id = request.session.get('user_id')
+    if not user_id:
+        messages.error(request, "Silakan login dulu untuk mengakses materi kursus ini.")
+        return redirect('login_page')
+
     if request.method == "POST":
 
-        # ── Selesaikan Kursus ─────────────────────────────────
-        if 'selesaikan' in request.POST:
-            completed_courses = request.session.get('completed_courses', [])
-            if course.id not in completed_courses:
-                completed_courses.append(course.id)
-                request.session['completed_courses'] = completed_courses
-                request.session.modified = True
-            messages.success(request, f"Selamat! Anda telah menyelesaikan kursus {course.name}.")
+        # ── Tandai Materi Selesai/Belum (per-video) ───────────────
+        if 'toggle_content' in request.POST:
+            content_id = request.POST.get('content_id')
+            content = get_object_or_404(CourseContent, id=content_id, course=course)
+            progress, created = ContentProgress.objects.get_or_create(user_id=user_id, content=content)
+            if not created:
+                # Sudah ada sebelumnya -> klik lagi artinya batalkan tanda selesai
+                progress.delete()
+                messages.success(request, f"'{content.name}' ditandai belum selesai.")
+            else:
+                messages.success(request, f"'{content.name}' ditandai selesai!")
             return redirect('course_detail', course_id=course.id)
 
         # ── Kirim Komentar ────────────────────────────────────
@@ -77,13 +98,32 @@ def detail(request, course_id):
 
             return redirect('course_detail', course_id=course.id)
 
+    contents = course.contents.all()
+    done_ids = set(
+        ContentProgress.objects.filter(user_id=user_id, content__course=course).values_list('content_id', flat=True)
+    )
+    total = contents.count()
+    progress_pct = int(len(done_ids) / total * 100) if total > 0 else 0
+
     return render(request, 'tasks/detail.html', {
         'course': course,
         'comments': comments,
+        'contents': contents,
+        'done_ids': done_ids,
+        'progress_pct': progress_pct,
+        'is_course_complete': total > 0 and progress_pct == 100,
     })
 
 
 def stats_view(request):
+    # Statistik harga kursus sengaja dibatasi cuma untuk user yang sudah
+    # login — pengunjung baru/belum daftar tidak diarahkan lihat data ini
+    # duluan (supaya angka mentah tidak jadi alasan ragu sebelum sempat
+    # eksplorasi konten kursusnya).
+    if not request.session.get('user_id'):
+        messages.error(request, "Silakan login dulu untuk melihat statistik kursus.")
+        return redirect('login_page')
+
     stats = Course.objects.aggregate(
         total_course=Count('id'),
         avg_price=Avg('price'),

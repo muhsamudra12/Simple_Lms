@@ -81,10 +81,7 @@ class Enrollment(models.Model):
         # Constraint agar satu siswa tidak mendaftar di kelas yang sama berkali-kali
         unique_together = ('course', 'student')
 
-    def save(self, *args, **kwargs):
-        # Tegakkan kuota max_students — sebelumnya field ini ada di model
-        # tapi tidak pernah benar-benar dicek di manapun, jadi siswa bisa
-        # terus mendaftar walau kursus sudah penuh.
+    def _check_capacity(self):
         if self.pk is None:
             current_count = Enrollment.objects.filter(course=self.course).count()
             if current_count >= self.course.max_students:
@@ -92,7 +89,38 @@ class Enrollment(models.Model):
                     f"Kursus '{self.course.name}' sudah penuh "
                     f"(maksimal {self.course.max_students} peserta)."
                 )
+
+    def clean(self):
+        # clean() dipanggil otomatis oleh Django Admin (lewat ModelForm.full_clean())
+        # SEBELUM proses save() — jadi kalau kuota penuh, errornya tampil rapi
+        # sebagai form error di Admin, bukan crash 500 Internal Server Error.
+        super().clean()
+        self._check_capacity()
+
+    def save(self, *args, **kwargs):
+        # Pengecekan ini tetap dipertahankan di save() sebagai jaring pengaman
+        # untuk jalur yang TIDAK lewat ModelForm (misal endpoint API yang
+        # langsung panggil .save() tanpa full_clean()).
+        self._check_capacity()
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.student.username} → {self.course.name} ({self.status})"
+
+
+# Model untuk progress per-materi (video) — pengganti sistem lama yang
+# cuma disimpan di session browser (hilang kalau ganti device/clear
+# cookie, dan tidak bisa dilihat/diedit lewat Admin). Sekarang setiap
+# video yang ditandai selesai oleh seorang user benar-benar tersimpan
+# di database, terhubung ke akun User aslinya.
+class ContentProgress(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='content_progress')
+    content = models.ForeignKey(CourseContent, on_delete=models.CASCADE, related_name='progress_records')
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Satu user cuma bisa punya satu record selesai per materi (tidak dobel)
+        unique_together = ('user', 'content')
+
+    def __str__(self):
+        return f"{self.user.username} selesai '{self.content.name}'"

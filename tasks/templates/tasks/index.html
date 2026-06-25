@@ -577,7 +577,7 @@
               <img src="{{ c.image_url|optimize_img }}" alt="{{ c.name }}" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/600x400/0a0f2c/ffffff?text={{ c.name|urlencode }}'"/>
               <div class="course-img-overlay"></div>
               <div class="badge-category">{{ c.category }}</div>
-              {% if c.id in completed_courses %}
+              {% if c.progress_pct == 100 %}
               <div class="badge-done"><i class="bi bi-check2 me-1"></i>Selesai</div>
               {% endif %}
             </div>
@@ -587,21 +587,23 @@
 
               <div class="progress-wrap">
                 <div class="progress-bar-bg">
-                  <div class="progress-bar-fill {% if c.id in completed_courses %}bg-success{% else %}bg-primary{% endif %}"
-                       style="width: {% if c.id in completed_courses %}100{% else %}0{% endif %}%"></div>
+                  <div class="progress-bar-fill {% if c.progress_pct == 100 %}bg-success{% else %}bg-primary{% endif %}"
+                       style="width: {{ c.progress_pct }}%"></div>
                 </div>
                 <div class="progress-label">
                   <span>Progress</span>
-                  <span>{% if c.id in completed_courses %}100%{% else %}0%{% endif %}</span>
+                  <span>{{ c.progress_pct }}%</span>
                 </div>
               </div>
 
               <div class="card-footer-custom">
                 <div class="price-tag">Rp {{ c.price|floatformat:0 }}</div>
                 <a href="{% url 'course_detail' c.id %}"
-                   class="btn-open {% if c.id in completed_courses %}done{% endif %}">
-                  {% if c.id in completed_courses %}
+                   class="btn-open {% if c.progress_pct == 100 %}done{% endif %}">
+                  {% if c.progress_pct == 100 %}
                     <i class="bi bi-check-circle-fill"></i> Lihat Lagi
+                  {% elif c.progress_pct > 0 %}
+                    <i class="bi bi-play-circle-fill"></i> Lanjutkan
                   {% else %}
                     Buka Materi <i class="bi bi-arrow-right"></i>
                   {% endif %}

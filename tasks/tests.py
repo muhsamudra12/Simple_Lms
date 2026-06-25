@@ -252,22 +252,50 @@ class CalculatorApiTest(TestCase):
 class EnrollmentApiTest(TestCase):
     def setUp(self):
         self.teacher = User.objects.create(username="enroll_api_teacher", fullname="T", email="t2@mail.com", password="x")
-        self.student = User.objects.create(username="enroll_api_student", fullname="S", email="s2@mail.com", password="x")
         self.course = Course.objects.create(
             name="Kursus Penuh API", description="desc", price=10000,
             teacher=self.teacher, max_students=1
         )
-        login = client.post("/auth/register", json={
+
+        client.post("/auth/register", json={
             "username": "enroll_api_auth", "fullname": "Auth User",
             "email": "auth@mail.com", "password": "rahasia123"
         })
         token_resp = client.post("/auth/login", json={"username": "enroll_api_auth", "password": "rahasia123"})
         self.headers = {"Authorization": f"Bearer {token_resp.json()['token']}"}
 
+        client.post("/auth/register", json={
+            "username": "enroll_api_auth2", "fullname": "Auth User 2",
+            "email": "auth2@mail.com", "password": "rahasia123"
+        })
+        token_resp2 = client.post("/auth/login", json={"username": "enroll_api_auth2", "password": "rahasia123"})
+        self.headers2 = {"Authorization": f"Bearer {token_resp2.json()['token']}"}
+
+    def test_enrollment_uses_authenticated_user_not_manual_input(self):
+        """
+        Sebelumnya endpoint ini menerima student_id manual di body — artinya
+        siapapun yang punya token bisa mendaftarkan ORANG LAIN. Sekarang
+        siswa yang terdaftar harus otomatis sama dengan pemilik token,
+        terlepas dari apapun yang dikirim di body.
+        """
+        r = client.post("/enrollments", json={"course_id": self.course.id, "status": "paid"}, headers=self.headers)
+        self.assertEqual(r.status_code, 200)
+        auth_user = User.objects.get(username="enroll_api_auth")
+        self.assertEqual(r.json()["student_id"], auth_user.id)
+
     def test_enrollment_rejected_when_course_full(self):
-        r1 = client.post("/enrollments", json={"course_id": self.course.id, "student_id": self.student.id, "status": "paid"}, headers=self.headers)
+        r1 = client.post("/enrollments", json={"course_id": self.course.id, "status": "paid"}, headers=self.headers)
         self.assertEqual(r1.status_code, 200)
 
-        student2 = User.objects.create(username="enroll_api_student2", fullname="S2", email="s3@mail.com", password="x")
-        r2 = client.post("/enrollments", json={"course_id": self.course.id, "student_id": student2.id, "status": "paid"}, headers=self.headers)
+        # User KEDUA (token berbeda) mencoba daftar ke kursus yang sama,
+        # yang kuotanya cuma 1 dan sudah terisi oleh user pertama.
+        r2 = client.post("/enrollments", json={"course_id": self.course.id, "status": "paid"}, headers=self.headers2)
         self.assertEqual(r2.status_code, 400)
+
+    def test_cannot_delete_other_users_enrollment(self):
+        r1 = client.post("/enrollments", json={"course_id": self.course.id, "status": "paid"}, headers=self.headers)
+        enrollment_id = r1.json()["id"]
+
+        # User KEDUA coba hapus enrollment milik user PERTAMA -> harus ditolak
+        r2 = client.delete(f"/enrollments/{enrollment_id}", headers=self.headers2)
+        self.assertEqual(r2.status_code, 403)

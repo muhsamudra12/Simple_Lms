@@ -140,14 +140,16 @@ class CourseOut(Schema):
     image_url: str
     category: str
     teacher: TeacherSchema
+    max_students: int
 
 class CourseIn(Schema):
     name: str
     description: str
     price: int
-    image_url: str = "https://via.placeholder.com/600x400?text=No+Image"
+    image_url: str = "https://placehold.co/600x400/0a0f2c/ffffff?text=LMS"
     category: str = "Umum"
     teacher_id: int
+    max_students: int = 100
 
 class CourseUpdate(Schema):
     name: Optional[str] = None
@@ -156,6 +158,7 @@ class CourseUpdate(Schema):
     image_url: Optional[str] = None
     category: Optional[str] = None
     teacher_id: Optional[int] = None
+    max_students: Optional[int] = None
 
 class CourseContentOut(Schema):
     id: int
@@ -271,7 +274,11 @@ def get_course(request, course_id: int): return get_object_or_404(Course, id=cou
 @api.post("/courses", tags=["Courses"], response=CourseOut, auth=GlobalAuth())
 def create_course(request, payload: CourseIn):
     teacher = get_object_or_404(User, id=payload.teacher_id)
-    return Course.objects.create(name=payload.name, description=payload.description, price=payload.price, image_url=payload.image_url, category=payload.category, teacher=teacher)
+    return Course.objects.create(
+        name=payload.name, description=payload.description, price=payload.price,
+        image_url=payload.image_url, category=payload.category, teacher=teacher,
+        max_students=payload.max_students,
+    )
 
 @api.put("/courses/{course_id}", tags=["Courses"], response=CourseOut, auth=GlobalAuth())
 def update_course(request, course_id: int, payload: CourseUpdate):
@@ -345,7 +352,6 @@ class EnrollmentOut(Schema):
 
 class EnrollmentIn(Schema):
     course_id: int
-    student_id: int
     status: Optional[str] = "pending"
 
 @api.get("/enrollments", tags=["Enrollments"], response=List[EnrollmentOut])
@@ -357,8 +363,14 @@ def list_enrollments(request, course_id: Optional[int] = None):
 
 @api.post("/enrollments", tags=["Enrollments"], response={200: EnrollmentOut, 400: AuthOutput}, auth=GlobalAuth())
 def create_enrollment(request, payload: EnrollmentIn):
+    """
+    Sebelumnya endpoint ini minta student_id manual di body — artinya
+    siapapun yang punya token (token SIAPA SAJA) bisa mendaftarkan ORANG
+    LAIN ke kursus apapun. Sekarang siswa yang mendaftar otomatis diambil
+    dari token JWT yang dipakai (request.user), bukan input bebas.
+    """
     course = get_object_or_404(Course, id=payload.course_id)
-    student = get_object_or_404(User, id=payload.student_id)
+    student = get_object_or_404(User, id=request.user.user_id)
     try:
         enrollment = Enrollment(course=course, student=student, status=payload.status)
         enrollment.save()
@@ -366,12 +378,19 @@ def create_enrollment(request, payload: EnrollmentIn):
     except ValidationError as e:
         return 400, {"message": str(e.message) if hasattr(e, "message") else str(e)}
     except IntegrityError:
-        return 400, {"message": "Siswa ini sudah terdaftar di kursus tersebut."}
+        return 400, {"message": "Kamu sudah terdaftar di kursus ini."}
 
 @api.delete("/enrollments/{enrollment_id}", tags=["Enrollments"], auth=GlobalAuth())
 def delete_enrollment(request, enrollment_id: int):
-    """Batalkan pendaftaran siswa (misal salah daftar atau refund). Butuh auth."""
-    get_object_or_404(Enrollment, id=enrollment_id).delete()
+    """
+    Batalkan pendaftaran. Sebelumnya endpoint ini bisa menghapus enrollment
+    SIAPAPUN selama punya token (token siapa saja) — sekarang dibatasi:
+    cuma pemilik enrollment itu sendiri yang boleh membatalkannya.
+    """
+    enrollment = get_object_or_404(Enrollment, id=enrollment_id)
+    if enrollment.student_id != request.user.user_id:
+        raise HttpError(403, "Kamu tidak punya izin untuk membatalkan enrollment ini.")
+    enrollment.delete()
     return {"success": True, "message": f"Enrollment {enrollment_id} berhasil dihapus"}
 
 

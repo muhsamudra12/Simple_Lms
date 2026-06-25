@@ -224,6 +224,57 @@
       }
       .btn-complete:hover { opacity: 0.9; transform: scale(1.02); }
 
+      /* Tombol tandai selesai per-video */
+      .btn-toggle-content {
+        width: 100%;
+        padding: 10px;
+        background: var(--surface);
+        color: var(--text-main);
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.83rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: background 0.2s;
+      }
+      .btn-toggle-content:hover { background: #e2e8f0; }
+      .btn-toggle-content.done {
+        background: #f0fdf4;
+        color: #15803d;
+        border-color: #bbf7d0;
+      }
+      .btn-toggle-content.done:hover { background: #dcfce7; }
+      .badge-done-mini {
+        margin-left: auto;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #15803d;
+        background: #f0fdf4;
+        padding: 3px 9px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .progress-track {
+        width: 100%;
+        height: 8px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: var(--blue);
+        border-radius: 20px;
+        transition: width 0.3s;
+      }
+      .progress-fill.done { background: linear-gradient(135deg, #16a34a, #22c55e); }
+
       /* ── KOMENTAR ── */
       .comment-section {
         margin-top: 32px;
@@ -461,6 +512,9 @@
             <div class="video-header">
               <div class="play-icon"><i class="bi bi-play-fill"></i></div>
               <h5>{{ content.name }}</h5>
+              {% if content.id in done_ids %}
+                <span class="badge-done-mini"><i class="bi bi-check-circle-fill"></i> Selesai</span>
+              {% endif %}
             </div>
             <div class="ratio ratio-16x9">
               <iframe
@@ -480,6 +534,19 @@
                 <span style="color:#b0bec5; font-style:italic;">Tidak ada deskripsi untuk materi ini.</span>
               {% endif %}
             </div>
+            <form method="POST" class="px-3 pb-3">
+              {% csrf_token %}
+              <input type="hidden" name="content_id" value="{{ content.id }}" />
+              {% if content.id in done_ids %}
+                <button type="submit" name="toggle_content" class="btn-toggle-content done">
+                  <i class="bi bi-check-circle-fill"></i> Selesai — Tandai Belum Selesai
+                </button>
+              {% else %}
+                <button type="submit" name="toggle_content" class="btn-toggle-content">
+                  <i class="bi bi-circle"></i> Tandai Selesai
+                </button>
+              {% endif %}
+            </form>
           </div>
           {% empty %}
           <div class="empty-alert">
@@ -585,13 +652,22 @@
                   <span><i class="bi bi-chat-dots-fill me-1 text-primary"></i>{{ comments|length }} komentar</span>
                 </div>
                 <hr style="border-color:#f1f5f9; margin: 16px 0;">
-                <!-- TOMBOL SELESAIKAN — pisah form agar tidak konflik dengan form komentar -->
-                <form method="POST">
-                  {% csrf_token %}
-                  <button type="submit" name="selesaikan" class="btn-complete">
-                    <i class="bi bi-check2-all"></i> Selesaikan Kursus
-                  </button>
-                </form>
+                <!-- PROGRESS OTOMATIS — dihitung dari materi yang sudah ditandai
+                     selesai satu-satu, bukan tombol manual "selesai" lagi -->
+                <div class="info-row">
+                  <label>Progress Kamu</label>
+                  <span class="fw-bold">{{ progress_pct }}%</span>
+                </div>
+                <div class="progress-track mb-2">
+                  <div class="progress-fill {% if is_course_complete %}done{% endif %}" style="width: {{ progress_pct }}%;"></div>
+                </div>
+                {% if is_course_complete %}
+                  <div class="alert-custom alert-success-custom mb-0">
+                    <i class="bi bi-trophy-fill"></i> Kursus selesai! Semua materi sudah kamu tandai selesai.
+                  </div>
+                {% else %}
+                  <p class="text-muted mb-0" style="font-size:0.78rem;">Tandai tiap materi selesai di sebelah kiri untuk menyelesaikan kursus ini.</p>
+                {% endif %}
               </div>
             </div>
           </div>
