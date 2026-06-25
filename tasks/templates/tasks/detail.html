@@ -87,6 +87,60 @@
         display: flex;
         align-items: center;
         gap: 10px;
+        margin-bottom: 12px;
+      }
+      .alert-custom:last-child { margin-bottom: 0; }
+
+      /* ── PREVIEW HERO ───────────────────────────────────────────
+         Cuma tampil buat user yang BELUM enroll (guest atau login
+         tapi belum ambil kursus) — biar halaman ini lebih kerasa
+         kayak "landing page" course (gaya Udemy/Coursera), bukan
+         sekadar daftar video polos. */
+      .preview-hero {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+        border-radius: var(--radius);
+        padding: 32px 28px;
+        margin-top: 24px;
+        margin-bottom: 24px;
+        color: #fff;
+      }
+      .ph-badge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+      .ph-cat {
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 20px;
+      }
+      .ph-rating { color: var(--accent-light); font-size: 0.85rem; font-weight: 700; }
+      .ph-rating .ph-muted, .ph-rating.ph-muted { color: rgba(255,255,255,0.55); font-weight: 500; }
+      .ph-title {
+        font-family: 'DM Serif Display', serif;
+        font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+        margin-bottom: 12px;
+        line-height: 1.2;
+      }
+      .ph-desc { color: rgba(255,255,255,0.75); font-size: 0.92rem; line-height: 1.6; max-width: 700px; margin-bottom: 18px; }
+      .ph-meta { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.82rem; color: rgba(255,255,255,0.85); margin-bottom: 18px; }
+      .ph-meta i { color: var(--accent); margin-right: 4px; }
+      .ph-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+      .ph-pill {
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 7px 14px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ph-pill-accent { background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.4); color: var(--accent-light); }
+      @media (max-width: 575.98px) {
+        .preview-hero { padding: 24px 18px; }
+        .ph-meta { gap: 12px; }
       }
       .alert-success-custom {
         background: #f0fdf4;
@@ -259,6 +313,104 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
+      }
+      .badge-preview-mini {
+        margin-left: auto;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #92400e;
+        background: #fffbeb;
+        padding: 3px 9px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .curriculum-badge-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+      }
+      .curriculum-badge-row .dot { color: #cbd5e1; }
+      .curriculum-badge-row .text-warning { color: var(--accent) !important; }
+
+      /* Baris materi terkunci (mode preview) — ringkas, tidak seberat
+         kartu video penuh, supaya halaman preview tetap terasa ringan. */
+      .locked-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        opacity: 0.75;
+        width: 100%;
+        text-align: left;
+        text-decoration: none;
+        cursor: pointer;
+        font-family: inherit;
+        transition: opacity 0.2s, border-color 0.2s;
+      }
+      .locked-row:hover:not(:disabled) { opacity: 1; border-color: var(--blue-light); }
+      .locked-row:disabled { cursor: not-allowed; }
+      .locked-row-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+      }
+      .locked-row-title { font-size: 0.88rem; font-weight: 600; color: var(--text-main); flex-grow: 1; }
+      .selling-points {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+      }
+      .sp-item {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+      }
+      .sp-item i { color: var(--accent); }
+      .sp-item strong { color: var(--text-main); }
+      .btn-share {
+        background: #fff;
+        color: var(--blue);
+        border: 1.5px solid #dbeafe;
+        border-radius: 10px;
+        padding: 10px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: background 0.2s;
+      }
+      .btn-share:hover { background: #eff6ff; }
+      .locked-row-tag {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--blue);
+        background: #eff6ff;
+        padding: 4px 12px;
+        border-radius: 20px;
+        flex-shrink: 0;
       }
       .progress-track {
         width: 100%;
@@ -531,17 +683,44 @@
       </div>
       {% endif %}
 
+      {% if not is_enrolled %}
+      <section class="preview-hero">
+        <div class="ph-badge-row">
+          <span class="ph-cat">{{ course.category }}</span>
+          {% if course_avg_rating %}
+          <span class="ph-rating"><i class="bi bi-star-fill"></i> {{ course_avg_rating }} <span class="ph-muted">({{ course_review_count }} ulasan)</span></span>
+          {% else %}
+          <span class="ph-rating ph-muted"><i class="bi bi-star"></i> Belum ada ulasan</span>
+          {% endif %}
+        </div>
+        <h1 class="ph-title">{{ course.name }}</h1>
+        <p class="ph-desc">{{ course.description|truncatewords:32 }}</p>
+        <div class="ph-meta">
+          <span><i class="bi bi-person-fill"></i> {{ course.teacher.fullname }}</span>
+          <span><i class="bi bi-people-fill"></i> {{ enrolled_count }} siswa terdaftar</span>
+          <span><i class="bi bi-collection-play-fill"></i> {{ total_content }} materi</span>
+        </div>
+        <div class="ph-pills">
+          {% if total_content > 0 %}
+          <span class="ph-pill ph-pill-accent"><i class="bi bi-play-circle-fill"></i> 1 Materi Gratis Dicoba</span>
+          {% endif %}
+          <span class="ph-pill"><i class="bi bi-patch-check-fill"></i> Dapatkan Sertifikat</span>
+          <span class="ph-pill"><i class="bi bi-infinity"></i> Akses Selamanya</span>
+        </div>
+      </section>
+      {% endif %}
+
       {% if not logged_in_user %}
       <div class="alert-custom mb-4" style="background:#eff6ff; color:#1e3a8a; border-left:4px solid #2563eb;">
         <i class="bi bi-eye-fill"></i>
         Kamu lihat <strong>preview</strong> kursus ini. <a href="{% url 'login_page' %}" style="color:#2563eb; font-weight:700; text-decoration:underline;">Login</a>
         atau <a href="{% url 'register_page' %}" style="color:#2563eb; font-weight:700; text-decoration:underline;">Daftar</a>
-        untuk mengambil kursus, menonton video & melacak progress belajarmu.
+        untuk mengambil kursus & melacak progress belajarmu.
       </div>
       {% elif not is_enrolled %}
       <div class="alert-custom mb-4" style="background:#fffbeb; color:#92400e; border-left:4px solid #f59e0b;">
         <i class="bi bi-eye-fill"></i>
-        Kamu lihat <strong>preview</strong> kursus ini. Ambil kursus ini dulu (lihat tombol di kolom kanan) untuk menonton video & melacak progress belajarmu.
+        Kamu lihat <strong>preview</strong> kursus ini. Ambil kursus ini dulu (lihat tombol di kolom kanan) untuk akses semua materi & melacak progress belajarmu.
       </div>
       {% endif %}
 
@@ -551,16 +730,25 @@
         <div class="col-lg-8">
 
           <!-- VIDEO LIST -->
-          {% for content in course.contents.all %}
+          {% if not is_enrolled and total_content > 0 %}
+          <div class="curriculum-badge-row">
+            <i class="bi bi-collection-play-fill"></i> {{ total_content }} Materi
+            <span class="dot">•</span>
+            <i class="bi bi-unlock-fill text-warning"></i> 1 Gratis Dicoba
+          </div>
+          {% endif %}
+          {% for content in contents %}
+            {% if is_enrolled or content.id == first_content_id %}
           <div class="video-card">
             <div class="video-header">
               <div class="play-icon"><i class="bi bi-play-fill"></i></div>
               <h5>{{ content.name }}</h5>
               {% if content.id in done_ids %}
                 <span class="badge-done-mini"><i class="bi bi-check-circle-fill"></i> Selesai</span>
+              {% elif not is_enrolled %}
+                <span class="badge-preview-mini"><i class="bi bi-unlock-fill"></i> Preview Gratis</span>
               {% endif %}
             </div>
-            {% if is_enrolled %}
             <div class="ratio ratio-16x9">
               <iframe
                 src="{{ content.video_url }}"
@@ -571,22 +759,6 @@
                 allowfullscreen>
               </iframe>
             </div>
-            {% else %}
-            <div class="ratio ratio-16x9" style="background:#0a0f2c; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; color:#fff;">
-              <i class="bi bi-lock-fill" style="font-size:2rem; color:#f59e0b;"></i>
-              {% if logged_in_user %}
-              {% if slots_left <= 0 %}
-              <span style="font-size:0.85rem; font-weight:600;">Kuota kursus ini penuh</span>
-              {% else %}
-              <span style="font-size:0.85rem; font-weight:600;">Ambil kursus ini dulu untuk menonton materi</span>
-              <button type="submit" name="ambil_kursus" form="ambilKursusForm" style="background:#f59e0b; color:#0a0f2c; font-weight:700; font-size:0.8rem; padding:8px 18px; border-radius:8px; border:none; cursor:pointer;">Ambil Kursus</button>
-              {% endif %}
-              {% else %}
-              <span style="font-size:0.85rem; font-weight:600;">Login untuk menonton materi ini</span>
-              <a href="{% url 'login_page' %}" style="background:#f59e0b; color:#0a0f2c; font-weight:700; font-size:0.8rem; padding:8px 18px; border-radius:8px; text-decoration:none;">Login Sekarang</a>
-              {% endif %}
-            </div>
-            {% endif %}
             <div class="video-desc">
               <h6>Deskripsi Materi</h6>
               {% if content.description %}
@@ -611,6 +783,25 @@
             </form>
             {% endif %}
           </div>
+            {% else %}
+          <!-- Materi terkunci (belum enroll) — baris ringkas, bukan kartu
+               video penuh, biar halaman preview tidak terasa berat/
+               berantakan dengan banyak placeholder terkunci. Bisa
+               langsung diklik buat ambil kursus / login. -->
+            {% if logged_in_user %}
+          <button type="submit" name="ambil_kursus" form="ambilKursusForm" class="locked-row" {% if slots_left <= 0 %}disabled{% endif %}>
+            <div class="locked-row-icon"><i class="bi bi-lock-fill"></i></div>
+            <span class="locked-row-title">{{ content.name }}</span>
+            <span class="locked-row-tag">{% if slots_left <= 0 %}Kuota Penuh{% else %}Ambil Kursus{% endif %}</span>
+          </button>
+            {% else %}
+          <a href="{% url 'login_page' %}" class="locked-row">
+            <div class="locked-row-icon"><i class="bi bi-lock-fill"></i></div>
+            <span class="locked-row-title">{{ content.name }}</span>
+            <span class="locked-row-tag">Login</span>
+          </a>
+            {% endif %}
+            {% endif %}
           {% empty %}
           <div class="empty-alert">
             <i class="bi bi-exclamation-triangle-fill"></i>
@@ -743,6 +934,13 @@
                   <span class="fw-bold" style="color:var(--blue); font-size:1.05rem;">Rp {{ course.price|floatformat:0 }}</span>
                 </div>
 
+                {% if not is_enrolled %}
+                <div class="selling-points">
+                  <div class="sp-item"><i class="bi bi-people-fill"></i> <strong>{{ enrolled_count }}</strong> siswa sudah ambil kursus ini</div>
+                  <div class="sp-item"><i class="bi bi-patch-check-fill"></i> Dapatkan <strong>sertifikat</strong> setelah selesai</div>
+                </div>
+                {% endif %}
+
                 {% if is_enrolled %}
                 <div class="alert-custom alert-success-custom mb-0">
                   <i class="bi bi-check-circle-fill"></i> Kamu sudah mengambil kursus ini.
@@ -808,6 +1006,11 @@
                   <p class="text-muted mb-0" style="font-size:0.78rem;">Tandai tiap materi selesai di sebelah kiri untuk menyelesaikan kursus ini.</p>
                 {% endif %}
                 {% endif %}
+
+                <hr style="border-color:#f1f5f9; margin: 16px 0;">
+                <button type="button" id="shareBtn" class="btn-share w-100" onclick="shareCourse()">
+                  <i class="bi bi-share-fill"></i> <span id="shareBtnLabel">Bagikan Kursus</span>
+                </button>
               </div>
             </div>
           </div>
@@ -827,5 +1030,25 @@
     </a>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      function shareCourse() {
+        const url = window.location.href;
+        const title = "{{ course.name|escapejs }}";
+        const label = document.getElementById('shareBtnLabel');
+
+        // Pakai Web Share API native kalau didukung (langsung muncul
+        // share-sheet OS, terutama di HP) — fallback ke copy-link kalau
+        // browser/device tidak mendukung (kebanyakan desktop).
+        if (navigator.share) {
+          navigator.share({ title: title, url: url }).catch(() => {});
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(() => {
+            const original = label.textContent;
+            label.textContent = "Link Tersalin!";
+            setTimeout(() => { label.textContent = original; }, 2000);
+          });
+        }
+      }
+    </script>
   </body>
 </html>

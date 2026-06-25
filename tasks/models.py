@@ -33,6 +33,15 @@ class CourseContent(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='contents')  # Relasi ke Course
     description = models.TextField(null=True, blank=True)
 
+    class Meta:
+        # Sebelumnya TIDAK ada ordering eksplisit, jadi urutan materi
+        # bisa berbeda-beda tergantung database (tidak konsisten) — ini
+        # juga jadi masalah baru sejak materi pertama dijadikan "preview
+        # gratis": tanpa urutan pasti, materi mana yang jadi gratis bisa
+        # berubah-ubah tiap kali halaman dibuka. Diurutkan oleh `id`
+        # (urutan dibuat) supaya konsisten.
+        ordering = ['id']
+
     def __str__(self):
         # Sebelumnya model ini TIDAK punya __str__ sama sekali, jadi Django
         # Admin nampilin representasi default Python yang generic ("CourseContent

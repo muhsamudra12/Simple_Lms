@@ -414,6 +414,12 @@
         border: 1.5px solid #bbf7d0;
       }
       .btn-open.done:hover { background: #dcfce7; }
+      .btn-open.btn-preview {
+        background: transparent;
+        color: var(--blue);
+        border: 1.5px solid var(--blue);
+      }
+      .btn-open.btn-preview:hover { background: var(--blue); color: white; }
       .pagination-wrap {
         display: flex;
         justify-content: center;
@@ -660,8 +666,8 @@
                 <div class="price-tag">Rp {{ c.price|floatformat:0 }}</div>
 
                 {% if not logged_in_user %}
-                  <a href="{% url 'login_page' %}" class="btn-open">
-                    <i class="bi bi-box-arrow-in-right"></i> Login
+                  <a href="{% url 'course_detail' c.id %}" class="btn-open btn-preview">
+                    <i class="bi bi-eye-fill"></i> Lihat Preview
                   </a>
                 {% elif not c.is_enrolled %}
                   <form method="POST" action="{% url 'course_detail' c.id %}">

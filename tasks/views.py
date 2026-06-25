@@ -196,7 +196,14 @@ def detail(request, course_id):
 
             return redirect('course_detail', course_id=course.id)
 
-    contents = course.contents.all()
+    # Diurutkan eksplisit (.order_by sudah didukung Meta.ordering di model,
+    # tapi dipanggil lagi di sini biar jelas & tidak bergantung diam-diam
+    # ke Meta) — penting karena "materi pertama" dipakai sebagai preview
+    # gratis di bawah, jadi urutannya harus konsisten.
+    contents = course.contents.all().order_by('id')
+    first_content = contents.first()
+    first_content_id = first_content.id if first_content else None
+
     done_ids = set(
         ContentProgress.objects.filter(user_id=user_id, content__course=course).values_list('content_id', flat=True)
     )
@@ -218,6 +225,12 @@ def detail(request, course_id):
     enrolled_count = Enrollment.objects.filter(course=course).count()
     slots_left = max(0, course.max_students - enrolled_count)
 
+    # Rating khusus course ini (beda dengan rating situs-wide di homepage)
+    # — dipakai di hero section halaman preview.
+    course_rating = course.comments.aggregate(avg=Avg('rating'), total=Count('id'))
+    course_avg_rating = round(course_rating['avg'], 1) if course_rating['avg'] else None
+    course_review_count = course_rating['total']
+
     return render(request, 'tasks/detail.html', {
         'course': course,
         'comments': comments,
@@ -230,6 +243,10 @@ def detail(request, course_id):
         'is_enrolled': is_enrolled,
         'enrollment': enrollment,
         'slots_left': slots_left,
+        'enrolled_count': enrolled_count,
+        'first_content_id': first_content_id,
+        'course_avg_rating': course_avg_rating,
+        'course_review_count': course_review_count,
     })
 
 
