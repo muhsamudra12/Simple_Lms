@@ -16,4 +16,9 @@ urlpatterns = [
     path('register/', views.register_page, name='register_page'),
     path('logout/', views.logout_view, name='logout_view'),
     path('profile/', views.profile_page, name='profile_page'),
+
+    # Sertifikat — diakses lewat kode UUID (bukan ID urut), publik bisa
+    # buka untuk keperluan verifikasi tanpa perlu login.
+    path('certificate/<uuid:code>/', views.certificate_view, name='certificate_view'),
+    path('certificate/<uuid:code>/download/', views.certificate_pdf, name='certificate_pdf'),
 ]

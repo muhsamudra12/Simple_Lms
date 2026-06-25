@@ -586,6 +586,11 @@
               <div class="card-title-custom">{{ c.name }}</div>
 
               <div class="progress-wrap">
+                {% if c.total_content == 0 %}
+                <div class="progress-label">
+                  <span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>Belum ada materi</span>
+                </div>
+                {% else %}
                 <div class="progress-bar-bg">
                   <div class="progress-bar-fill {% if c.progress_pct == 100 %}bg-success{% else %}bg-primary{% endif %}"
                        style="width: {{ c.progress_pct }}%"></div>
@@ -594,6 +599,7 @@
                   <span>Progress</span>
                   <span>{{ c.progress_pct }}%</span>
                 </div>
+                {% endif %}
               </div>
 
               <div class="card-footer-custom">

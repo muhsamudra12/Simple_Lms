@@ -1,4 +1,5 @@
 # tasks/models.py
+import uuid
 from django.db import models
 from django.core.exceptions import ValidationError
 
@@ -124,3 +125,28 @@ class ContentProgress(models.Model):
 
     def __str__(self):
         return f"{self.user.username} selesai '{self.content.name}'"
+
+
+# Model untuk Sertifikat penyelesaian kursus.
+#
+# Sengaja disimpan permanen di database (bukan di-generate ulang on-the-fly
+# tiap kali halaman dibuka) supaya:
+# 1. Tanggal "Diterbitkan" konsisten — selalu tanggal PERTAMA KALI kursus
+#    diselesaikan, bukan ikut berubah kalau halaman di-refresh.
+# 2. Punya kode verifikasi (`code`) yang permanen & bisa dibagikan
+#    (misal ke HRD perusahaan) untuk membuktikan sertifikat itu asli,
+#    tanpa orang lain perlu login dulu.
+
+class Certificate(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='certificates')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='certificates')
+    code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Satu user cuma bisa punya satu sertifikat per kursus (tidak dobel
+        # kalau misal toggle materi selesai/belum-selesai berkali-kali).
+        unique_together = ('user', 'course')
+
+    def __str__(self):
+        return f"Sertifikat {self.user.fullname} — {self.course.name}"

@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Course, Comment, User, CourseContent, ContentProgress
+from .models import Course, Comment, User, CourseContent, ContentProgress, Certificate
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.paginator import Paginator
@@ -8,6 +8,12 @@ from django.db.models import Avg, Max, Min, Count
 from django.db.models.functions import Cast
 from django.db import models as db_models
 from django.shortcuts import render
+from django.http import HttpResponse
+import io
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.lib.units import cm
+from reportlab.lib.colors import HexColor
+from reportlab.pdfgen import canvas
 
 
 def index(request):
@@ -31,6 +37,7 @@ def index(request):
     user_id = request.session.get('user_id')
     for c in page_obj:
         total = c.contents.count()
+        c.total_content = total
         if user_id and total > 0:
             done = ContentProgress.objects.filter(user_id=user_id, content__course=c).count()
             c.progress_pct = int(done / total * 100)
@@ -104,6 +111,16 @@ def detail(request, course_id):
     )
     total = contents.count()
     progress_pct = int(len(done_ids) / total * 100) if total > 0 else 0
+    is_course_complete = total > 0 and progress_pct == 100
+
+    # Sertifikat di-issue OTOMATIS begitu progress kursus mencapai 100% —
+    # disimpan permanen (get_or_create) supaya tanggal terbit & kode
+    # verifikasinya tidak berubah-ubah tiap halaman ini dibuka ulang.
+    certificate = None
+    if is_course_complete:
+        certificate, _ = Certificate.objects.get_or_create(
+            user_id=user_id, course=course
+        )
 
     return render(request, 'tasks/detail.html', {
         'course': course,
@@ -111,7 +128,9 @@ def detail(request, course_id):
         'contents': contents,
         'done_ids': done_ids,
         'progress_pct': progress_pct,
-        'is_course_complete': total > 0 and progress_pct == 100,
+        'total_content': total,
+        'is_course_complete': is_course_complete,
+        'certificate': certificate,
     })
 
 
@@ -322,3 +341,115 @@ def profile_page(request):
         return redirect('profile_page')
 
     return render(request, 'tasks/profile.html', {'profile_user': user})
+
+
+# ─────────────────────────────────────────────
+# 🏆 SERTIFIKAT KURSUS
+# Diakses lewat kode unik (UUID), bukan ID urut biasa — supaya orang lain
+# (misal HRD perusahaan yang ingin verifikasi) bisa lihat halaman ini
+# TANPA perlu login, tapi tidak bisa asal nebak-nebak sertifikat siapapun
+# cuma dengan mengganti angka di URL (seperti /certificate/1/, /2/, dst).
+# Sengaja TIDAK dibatasi cuma untuk pemiliknya sendiri, karena tujuan
+# utama halaman verifikasi publik adalah supaya pihak ketiga bisa
+# memastikan keasliannya tanpa perlu akun.
+# ─────────────────────────────────────────────
+_BULAN_ID = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+]
+
+
+def format_indo_date(dt):
+    """
+    LANGUAGE_CODE project ini 'en-us' (dipakai juga oleh Admin & komponen
+    lain), jadi filter `|date` Django bawaan bakal nampilin nama bulan
+    Inggris (June, dst). Khusus halaman sertifikat — yang seluruh teks
+    lainnya Bahasa Indonesia — tanggal di-format manual di sini saja,
+    tanpa perlu mengubah LANGUAGE_CODE global project.
+    """
+    return f"{dt.day} {_BULAN_ID[dt.month - 1]} {dt.year}"
+
+
+def certificate_view(request, code):
+    certificate = get_object_or_404(Certificate, code=code)
+    return render(request, 'tasks/certificate.html', {
+        'certificate': certificate,
+        'issued_at_id': format_indo_date(certificate.issued_at),
+    })
+
+
+def certificate_pdf(request, code):
+    certificate = get_object_or_404(Certificate, code=code)
+
+    buffer = io.BytesIO()
+    page_size = landscape(A4)
+    pdf = canvas.Canvas(buffer, pagesize=page_size)
+    width, height = page_size
+
+    navy = HexColor('#0a0f2c')
+    accent = HexColor('#f59e0b')
+    muted = HexColor('#64748b')
+
+    # Border ganda biar kelihatan kayak sertifikat resmi, bukan dokumen biasa
+    pdf.setStrokeColor(navy)
+    pdf.setLineWidth(3)
+    pdf.rect(1.2 * cm, 1.2 * cm, width - 2.4 * cm, height - 2.4 * cm)
+    pdf.setStrokeColor(accent)
+    pdf.setLineWidth(1)
+    pdf.rect(1.6 * cm, 1.6 * cm, width - 3.2 * cm, height - 3.2 * cm)
+
+    center_x = width / 2
+
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawCentredString(center_x, height - 3.2 * cm, "LMS ACADEMY")
+
+    pdf.setFillColor(accent)
+    pdf.setFont("Helvetica-Bold", 30)
+    pdf.drawCentredString(center_x, height - 5 * cm, "SERTIFIKAT PENYELESAIAN")
+
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 13)
+    pdf.drawCentredString(center_x, height - 6.5 * cm, "Dengan ini menyatakan bahwa")
+
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 26)
+    pdf.drawCentredString(center_x, height - 8 * cm, certificate.user.fullname)
+
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 13)
+    pdf.drawCentredString(center_x, height - 9.3 * cm, "telah berhasil menyelesaikan seluruh materi kursus")
+
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawCentredString(center_x, height - 10.6 * cm, certificate.course.name)
+
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 11)
+    pdf.drawCentredString(
+        center_x, height - 12.5 * cm,
+        f"Diterbitkan pada {format_indo_date(certificate.issued_at)}"
+    )
+
+    # Tanda tangan pengajar (nama teacher dari Course)
+    pdf.setStrokeColor(muted)
+    pdf.line(center_x - 4 * cm, 3.6 * cm, center_x + 4 * cm, 3.6 * cm)
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawCentredString(center_x, 3.1 * cm, certificate.course.teacher.fullname)
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 9)
+    pdf.drawCentredString(center_x, 2.6 * cm, "Pengajar Kursus")
+
+    # Kode verifikasi di pojok bawah — biar bisa dicek ulang keasliannya
+    pdf.setFont("Helvetica", 8)
+    pdf.drawCentredString(center_x, 2 * cm, f"Kode Verifikasi: {certificate.code}")
+
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type='application/pdf')
+    filename = f"Sertifikat-{certificate.course.name}-{certificate.user.fullname}.pdf".replace(" ", "_")
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

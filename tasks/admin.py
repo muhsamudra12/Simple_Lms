@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password, identify_hasher
 from django.utils.html import format_html
-from .models import User, Course, CourseContent, Comment, CourseMember, Enrollment, ContentProgress
+from .models import User, Course, CourseContent, Comment, CourseMember, Enrollment, ContentProgress, Certificate
 # Impor library import_export
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
@@ -117,3 +117,16 @@ class ContentProgressAdmin(ImportExportModelAdmin):
     def get_course(self, obj):
         return obj.content.course
     get_course.short_description = 'Kursus'
+
+
+# ── Certificate (Sertifikat Penyelesaian Kursus) ────────────
+# Read-only di sisi field `code` & `issued_at` — kedua field ini
+# di-generate otomatis (UUID + auto_now_add) dan tidak boleh diubah
+# manual lewat Admin, supaya kode verifikasi tidak bisa diutak-atik.
+@admin.register(Certificate)
+class CertificateAdmin(ImportExportModelAdmin):
+    list_display = ('user', 'course', 'code', 'issued_at')
+    list_filter = ('course', 'issued_at')
+    search_fields = ('user__username', 'user__fullname', 'course__name', 'code')
+    readonly_fields = ('code', 'issued_at')
+    autocomplete_fields = ['user', 'course']

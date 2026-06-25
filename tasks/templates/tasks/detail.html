@@ -654,6 +654,12 @@
                 <hr style="border-color:#f1f5f9; margin: 16px 0;">
                 <!-- PROGRESS OTOMATIS — dihitung dari materi yang sudah ditandai
                      selesai satu-satu, bukan tombol manual "selesai" lagi -->
+                {% if total_content == 0 %}
+                <div class="info-row">
+                  <label>Progress Kamu</label>
+                </div>
+                <p class="text-muted mb-0" style="font-size:0.78rem;"><i class="bi bi-hourglass-split me-1"></i>Belum ada materi untuk kursus ini.</p>
+                {% else %}
                 <div class="info-row">
                   <label>Progress Kamu</label>
                   <span class="fw-bold">{{ progress_pct }}%</span>
@@ -665,8 +671,16 @@
                   <div class="alert-custom alert-success-custom mb-0">
                     <i class="bi bi-trophy-fill"></i> Kursus selesai! Semua materi sudah kamu tandai selesai.
                   </div>
+                  {% if certificate %}
+                  <a href="{% url 'certificate_view' certificate.code %}"
+                     class="btn w-100 mt-2 d-inline-flex align-items-center justify-content-center gap-2 fw-bold"
+                     style="background:#f59e0b; color:#0a0f2c; border-radius:10px; text-decoration:none;">
+                    <i class="bi bi-patch-check-fill"></i> Lihat Sertifikat
+                  </a>
+                  {% endif %}
                 {% else %}
                   <p class="text-muted mb-0" style="font-size:0.78rem;">Tandai tiap materi selesai di sebelah kiri untuk menyelesaikan kursus ini.</p>
+                {% endif %}
                 {% endif %}
               </div>
             </div>
