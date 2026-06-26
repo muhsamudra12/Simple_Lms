@@ -92,8 +92,36 @@
       }
 
       /* ── FLASH MESSAGES ── */
-      .flash-area {
-        margin-top: 20px;
+      .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 360px;
+      }
+      .toast-msg {
+        background: #fff;
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        box-shadow: 0 10px 30px rgba(10,15,44,0.18);
+        animation: toast-in 0.35s ease;
+      }
+      .toast-success { border-left: 4px solid #22c55e; color: #15803d; }
+      .toast-error { border-left: 4px solid #ef4444; color: #b91c1c; }
+      @keyframes toast-in {
+        from { opacity: 0; transform: translateY(-10px) translateX(20px); }
+        to { opacity: 1; transform: translateY(0) translateX(0); }
+      }
+      @media (max-width: 575.98px) {
+        .toast-container { left: 12px; right: 12px; top: 12px; max-width: none; }
       }
       .alert-custom {
         border: none;
@@ -718,18 +746,16 @@
 
     <div class="container" style="padding-top: 32px; padding-bottom: 40px;">
 
-      <!-- FLASH MESSAGES -->
+      <!-- FLASH MESSAGES (toast, ngambang — beda dengan banner persistent
+           kayak "preview kursus" / "kursus selesai" di bawah yang masih
+           pakai .alert-custom biasa dan harus TETAP nongol) -->
       {% if messages %}
-      <div class="flash-area mb-4">
+      <div class="toast-container">
         {% for message in messages %}
           {% if message.tags == 'error' %}
-          <div class="alert-custom alert-error-custom">
-            <i class="bi bi-exclamation-circle-fill"></i> {{ message }}
-          </div>
+          <div class="toast-msg toast-error"><i class="bi bi-exclamation-circle-fill"></i> <span>{{ message }}</span></div>
           {% else %}
-          <div class="alert-custom alert-success-custom">
-            <i class="bi bi-patch-check-fill"></i> {{ message }}
-          </div>
+          <div class="toast-msg toast-success"><i class="bi bi-patch-check-fill"></i> <span>{{ message }}</span></div>
           {% endif %}
         {% endfor %}
       </div>
@@ -1114,29 +1140,18 @@
         }
       }
     
-      // Auto-dismiss notifikasi (login/logout/dll) setelah beberapa detik
-      // — sebelumnya pesan flash cuma hilang kalau user pindah halaman
-      // atau refresh manual, jadi numpuk/ketinggalan di layar terus.
-      document.querySelectorAll('.alert-custom').forEach(function (alertEl, i) {
+      // Auto-dismiss TOAST notifikasi (login/logout/dll) setelah beberapa
+      // detik. Sengaja CUMA target '.toast-msg' (bukan '.alert-custom'
+      // secara umum) — '.alert-custom' juga dipakai buat banner PERSISTEN
+      // di halaman ini ("Kamu lihat preview kursus ini...", "Kursus
+      // selesai!", dst) yang harus TETAP nongol, bukan ikut ke-auto-hide.
+      document.querySelectorAll('.toast-msg').forEach(function (toastEl, i) {
         setTimeout(function () {
-          alertEl.style.transition = 'opacity 0.4s ease, max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease';
-          alertEl.style.opacity = '0';
-          alertEl.style.maxHeight = '0';
-          alertEl.style.overflow = 'hidden';
-          alertEl.style.marginBottom = '0';
-          alertEl.style.paddingTop = '0';
-          alertEl.style.paddingBottom = '0';
-          setTimeout(function () {
-            var wrapper = alertEl.closest('.flash-area');
-            alertEl.remove();
-            // Wrapper ".flash-area" punya margin-bottom sendiri (mb-4) yang
-            // tidak ikut hilang cuma karena alert di dalamnya sudah dihapus
-            // — kalau dibiarkan, nyisa gap kosong kecil. Dibersihkan juga.
-            if (wrapper && !wrapper.querySelector('.alert-custom')) {
-              wrapper.remove();
-            }
-          }, 400);
-        }, 4000 + i * 300);
+          toastEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+          toastEl.style.opacity = '0';
+          toastEl.style.transform = 'translateX(30px)';
+          setTimeout(function () { toastEl.remove(); }, 350);
+        }, (toastEl.classList.contains('toast-error') ? 7000 : 4000) + i * 300);
       });
     </script>
   </body>
