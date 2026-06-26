@@ -1,760 +1,810 @@
 {
-  "info": {
-    "_postman_id": "lms-academy-uas-collection",
-    "name": "Simple LMS API v2 - UAS",
-    "description": "Koleksi Postman untuk menguji REST API Simple LMS (Proyek UAS - Pemrograman Sisi Server). Token JWT otomatis tersimpan ke variable {{jwt_token}} setiap kali request Login berhasil dijalankan, jadi tidak perlu copy-paste manual ke request lain.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://127.0.0.1:8000/api/v2",
-      "type": "string"
-    },
-    {
-      "key": "jwt_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "sample_teacher_id",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "sample_course_id",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "sample_student_id",
-      "value": "2",
-      "type": "string"
-    }
-  ],
-  "item": [
-    {
-      "name": "1. Authentication",
-      "item": [
-        {
-          "name": "Register User",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"postman_user\",\n  \"fullname\": \"Postman Tester\",\n  \"email\": \"postman@test.com\",\n  \"password\": \"rahasia123\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
-            },
-            "description": "Daftar user baru. Jalankan ini SEKALI saja (kalau username sudah ada, akan dapat respons 400)."
-          },
-          "response": []
-        },
-        {
-          "name": "Login (otomatis simpan token)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const data = pm.response.json();",
-                  "    pm.collectionVariables.set('jwt_token', data.token);",
-                  "    console.log('JWT token tersimpan ke variable jwt_token');",
-                  "} else {",
-                  "    console.log('Login gagal, token tidak diupdate');",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"postman_user\",\n  \"password\": \"rahasia123\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "description": "Login dan dapatkan token JWT. Tab 'Tests' di request ini otomatis menyimpan token ke variable {{jwt_token}} supaya semua request lain (yang butuh auth) bisa langsung pakai tanpa copy manual."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "2. Courses",
-      "item": [
-        {
-          "name": "List Courses (pagination + filter)",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/courses?search=&price=&sort_by=id&page=1&per_page=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ],
-              "query": [
-                {
-                  "key": "search",
-                  "value": "",
-                  "description": "Cari berdasarkan nama kursus",
-                  "disabled": true
-                },
-                {
-                  "key": "price",
-                  "value": "",
-                  "description": "Filter harga exact",
-                  "disabled": true
-                },
-                {
-                  "key": "sort_by",
-                  "value": "id",
-                  "description": "id | name | price | -price"
-                },
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "per_page",
-                  "value": "5"
-                }
-              ]
-            },
-            "description": "Endpoint publik. Parameter search & price sengaja di-disable (uncheck) secara default karena kalau dikirim kosong (?price=) akan error 422 \u2014 itu sudah saya benerin di server, tapi best practice tetap uncheck dulu param yang tidak dipakai, baru centang & isi kalau memang mau filter."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Course Detail",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/courses/{{sample_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Course (butuh token)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Kursus dari Postman\",\n  \"description\": \"Dibuat lewat Postman buat testing\",\n  \"price\": 99000,\n  \"image_url\": \"https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=600\",\n  \"category\": \"Testing\",\n  \"teacher_id\": {{sample_teacher_id}}\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/courses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ]
-            },
-            "description": "Jalankan request 'Login' dulu sebelum ini supaya {{jwt_token}} terisi. Tanpa token, ini akan ditolak 401."
-          },
-          "response": []
-        },
-        {
-          "name": "Update Course (butuh token)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"price\": 75000\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/courses/{{sample_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "1"
-              ]
-            },
-            "description": "Semua field optional \u2014 kirim yang mau diubah saja."
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Course (butuh token)",
-          "request": {
-            "method": "DELETE",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/courses/{{sample_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "3. Users",
-      "item": [
-        {
-          "name": "List Users",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/users",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get User Detail",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/users/{{sample_teacher_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete User (butuh token)",
-          "request": {
-            "method": "DELETE",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/users/{{sample_teacher_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "4. Course Contents",
-      "item": [
-        {
-          "name": "List Contents",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/contents",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "contents"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Content (butuh token)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Materi dari Postman\",\n  \"video_url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n  \"description\": \"Video akan otomatis dikonversi ke format embed\",\n  \"course_id\": {{sample_course_id}}\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/contents",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "contents"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Content (butuh token)",
-          "request": {
-            "method": "DELETE",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/contents/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "contents",
-                "1"
-              ]
-            },
-            "description": "PENTING: ganti angka 1 di akhir URL dengan ID konten yang BENAR-BENAR ada (cek dulu lewat List Contents)."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "5. Comments",
-      "item": [
-        {
-          "name": "List Comments",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/comments",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "comments"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Comment (publik, ada rate-limit)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"course_id\": {{sample_course_id}},\n  \"nama_komentator\": \"Penonton Postman\",\n  \"isi_komentar\": \"Mantap kursusnya!\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/comments",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "comments"
-              ]
-            },
-            "description": "Tidak butuh token (sengaja publik, sama seperti form komentar di website). Tapi dibatasi 10 request/menit per IP \u2014 coba spam >10x buat lihat respons 429."
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Comment - Moderasi (butuh token)",
-          "request": {
-            "method": "DELETE",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/comments/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "comments",
-                "1"
-              ]
-            },
-            "description": "PENTING: ganti angka 1 di akhir URL dengan ID yang BENAR-BENAR ada (cek dulu lewat List/Get di atas) \u2014 ID di sini adalah ID resource itu sendiri, bukan course_id."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "6. Enrollments",
-      "item": [
-        {
-          "name": "List Enrollments",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/enrollments?course_id={{sample_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "enrollments"
-              ],
-              "query": [
-                {
-                  "key": "course_id",
-                  "value": "{{sample_course_id}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Enrollment (butuh token)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"course_id\": {{sample_course_id}},\n  \"student_id\": {{sample_student_id}},\n  \"status\": \"paid\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/enrollments",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "enrollments"
-              ]
-            },
-            "description": "Coba kirim ulang dengan student_id yang sama dua kali -> respons 400 (sudah terdaftar). Atau coba sampai melebihi max_students kursus -> respons 400 (kuota penuh)."
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Enrollment (butuh token)",
-          "request": {
-            "method": "DELETE",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/enrollments/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "enrollments",
-                "1"
-              ]
-            },
-            "description": "PENTING: ganti angka 1 di akhir URL dengan ID yang BENAR-BENAR ada (cek dulu lewat List/Get di atas) \u2014 ID di sini adalah ID resource itu sendiri, bukan course_id."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "7. Course Members",
-      "item": [
-        {
-          "name": "List Course Members",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/course-members?course_id={{sample_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "course-members"
-              ],
-              "query": [
-                {
-                  "key": "course_id",
-                  "value": "{{sample_course_id}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Course Member (butuh token)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"course_id\": {{sample_course_id}},\n  \"user_id\": {{sample_student_id}},\n  \"roles\": \"std\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/course-members",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "course-members"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Course Member (butuh token)",
-          "request": {
-            "method": "DELETE",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt_token}}"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/course-members/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "course-members",
-                "1"
-              ]
-            },
-            "description": "PENTING: ganti angka 1 di akhir URL dengan ID yang BENAR-BENAR ada (cek dulu lewat List/Get di atas) \u2014 ID di sini adalah ID resource itu sendiri, bukan course_id."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "8. Hello & Calculator (demo)",
-      "item": [
-        {
-          "name": "Hello GET",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/hello?name=Postman",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "hello"
-              ],
-              "query": [
-                {
-                  "key": "name",
-                  "value": "Postman"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Calculator - Normal",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nilai1\": 10,\n  \"operator\": \"+\",\n  \"nilai2\": 5\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/calc",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "calc"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Calculator - Divide by Zero (harus 400, bukan 500)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nilai1\": 10,\n  \"operator\": \"/\",\n  \"nilai2\": 0\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/calc",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "calc"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    }
-  ]
+	"info": {
+		"_postman_id": "lms-academy-uas-collection",
+		"name": "Simple LMS API v2 - UAS",
+		"description": "Koleksi Postman untuk menguji REST API Simple LMS (Proyek UAS - Pemrograman Sisi Server). Token JWT otomatis tersimpan ke variable {{jwt_token}} setiap kali request Login berhasil dijalankan, jadi tidak perlu copy-paste manual ke request lain.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000/api/v2",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sample_teacher_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "sample_course_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "sample_student_id",
+			"value": "2",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"postman_user\",\n  \"fullname\": \"Postman Tester\",\n  \"email\": \"postman@test.com\",\n  \"password\": \"rahasia123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Daftar user baru. Jalankan ini SEKALI saja (kalau username sudah ada, akan dapat respons 400)."
+					},
+					"response": []
+				},
+				{
+					"name": "Login (otomatis simpan token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const data = pm.response.json();",
+									"    pm.collectionVariables.set('jwt_token', data.token);",
+									"    console.log('JWT token tersimpan ke variable jwt_token');",
+									"} else {",
+									"    console.log('Login gagal, token tidak diupdate');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"postman_user\",\n  \"password\": \"rahasia123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login dan dapatkan token JWT. Tab 'Tests' di request ini otomatis menyimpan token ke variable {{jwt_token}} supaya semua request lain (yang butuh auth) bisa langsung pakai tanpa copy manual."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Courses",
+			"item": [
+				{
+					"name": "List Courses (pagination + filter)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/courses?search=&price=&sort_by=id&page=1&per_page=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"courses"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "",
+									"description": "Cari berdasarkan nama kursus",
+									"disabled": true
+								},
+								{
+									"key": "price",
+									"value": "",
+									"description": "Filter harga exact",
+									"disabled": true
+								},
+								{
+									"key": "sort_by",
+									"value": "id",
+									"description": "id | name | price | -price"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Endpoint publik. Parameter search & price sengaja di-disable (uncheck) secara default karena kalau dikirim kosong (?price=) akan error 422 — itu sudah saya benerin di server, tapi best practice tetap uncheck dulu param yang tidak dipakai, baru centang & isi kalau memang mau filter."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course Detail",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/courses/{{sample_course_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"courses",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course (butuh token)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Kursus dari Postman\",\n  \"description\": \"Dibuat lewat Postman buat testing\",\n  \"price\": 99000,\n  \"image_url\": \"https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=600\",\n  \"category\": \"Testing\",\n  \"teacher_id\": {{sample_teacher_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/courses",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"courses"
+							]
+						},
+						"description": "Jalankan request 'Login' dulu sebelum ini supaya {{jwt_token}} terisi. Tanpa token, ini akan ditolak 401."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Course (butuh token)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"price\": 75000\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/courses/{{sample_course_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"courses",
+								"1"
+							]
+						},
+						"description": "Semua field optional — kirim yang mau diubah saja."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Course (butuh token)",
+					"request": {
+						"method": "DELETE",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/courses/{{sample_course_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"courses",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Users",
+			"item": [
+				{
+					"name": "List Users (butuh token)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Detail (butuh token)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/users/{{sample_teacher_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User (butuh token)",
+					"request": {
+						"method": "DELETE",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/users/{{sample_teacher_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Course Contents",
+			"item": [
+				{
+					"name": "List Contents (butuh token)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/contents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contents"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Content (butuh token)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Materi dari Postman\",\n  \"video_url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n  \"description\": \"Video akan otomatis dikonversi ke format embed\",\n  \"course_id\": {{sample_course_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/contents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contents"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Content (butuh token)",
+					"request": {
+						"method": "DELETE",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/contents/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contents",
+								"1"
+							]
+						},
+						"description": "PENTING: ganti angka 1 di akhir URL dengan ID konten yang BENAR-BENAR ada (cek dulu lewat List Contents)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Comments",
+			"item": [
+				{
+					"name": "List Comments",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/comments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Comment (publik, ada rate-limit)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"course_id\": {{sample_course_id}},\n  \"nama_komentator\": \"Penonton Postman\",\n  \"isi_komentar\": \"Mantap kursusnya!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/comments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"comments"
+							]
+						},
+						"description": "Tidak butuh token (sengaja publik, sama seperti form komentar di website). Tapi dibatasi 10 request/menit per IP — coba spam >10x buat lihat respons 429."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comment - Moderasi (butuh token)",
+					"request": {
+						"method": "DELETE",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/comments/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"comments",
+								"1"
+							]
+						},
+						"description": "PENTING: ganti angka 1 di akhir URL dengan ID yang BENAR-BENAR ada (cek dulu lewat List/Get di atas) — ID di sini adalah ID resource itu sendiri, bukan course_id."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Enrollments",
+			"item": [
+				{
+					"name": "List Enrollments (butuh token)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/enrollments?course_id={{sample_course_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"enrollments"
+							],
+							"query": [
+								{
+									"key": "course_id",
+									"value": "{{sample_course_id}}"
+								}
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Enrollment (butuh token)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"course_id\": {{sample_course_id}},\n  \"student_id\": {{sample_student_id}},\n  \"status\": \"paid\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/enrollments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"enrollments"
+							]
+						},
+						"description": "Coba kirim ulang dengan student_id yang sama dua kali -> respons 400 (sudah terdaftar). Atau coba sampai melebihi max_students kursus -> respons 400 (kuota penuh)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Enrollment (butuh token)",
+					"request": {
+						"method": "DELETE",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/enrollments/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"enrollments",
+								"1"
+							]
+						},
+						"description": "PENTING: ganti angka 1 di akhir URL dengan ID yang BENAR-BENAR ada (cek dulu lewat List/Get di atas) — ID di sini adalah ID resource itu sendiri, bukan course_id."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Course Members",
+			"item": [
+				{
+					"name": "List Course Members (butuh token)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/course-members?course_id={{sample_course_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"course-members"
+							],
+							"query": [
+								{
+									"key": "course_id",
+									"value": "{{sample_course_id}}"
+								}
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course Member (butuh token)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"course_id\": {{sample_course_id}},\n  \"user_id\": {{sample_student_id}},\n  \"roles\": \"std\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/course-members",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"course-members"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Course Member (butuh token)",
+					"request": {
+						"method": "DELETE",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/course-members/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"course-members",
+								"1"
+							]
+						},
+						"description": "PENTING: ganti angka 1 di akhir URL dengan ID yang BENAR-BENAR ada (cek dulu lewat List/Get di atas) — ID di sini adalah ID resource itu sendiri, bukan course_id."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Hello & Calculator (demo)",
+			"item": [
+				{
+					"name": "Hello GET",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/hello?name=Postman",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"hello"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "Postman"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Calculator - Normal",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nilai1\": 10,\n  \"operator\": \"+\",\n  \"nilai2\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/calc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"calc"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Calculator - Divide by Zero (harus 400, bukan 500)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nilai1\": 10,\n  \"operator\": \"/\",\n  \"nilai2\": 0\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/calc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"calc"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
 }

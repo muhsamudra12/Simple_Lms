@@ -21,11 +21,19 @@ def run_seed():
     # Password di-hash dengan make_password() — JANGAN simpan plain text,
     # karena AUTH (login_user di tasks/api.py) sekarang validasi pakai
     # check_password() yang butuh format hash, bukan teks polos.
+    #
+    # is_verified=True SENGAJA diset manual di sini — akun seed/dummy ini
+    # dibuat langsung lewat script, BUKAN lewat form registrasi web biasa,
+    # jadi tidak pernah ada email verifikasi yang "sungguhan" terkirim.
+    # Tanpa ini, akun dummy di bawah TIDAK BISA dipakai login di WEBSITE
+    # sama sekali (cuma bisa login lewat API) karena login web sekarang
+    # mewajibkan email terverifikasi dulu.
     teacher1 = User.objects.create(
         username="ajib_susanto",
         fullname="Ajib Susanto, M.Kom",
         email="ajib@dinus.ac.id",
         password=make_password("password123"),
+        is_verified=True,
     )
     
     teacher2 = User.objects.create(
@@ -33,6 +41,7 @@ def run_seed():
         fullname="Pak Ardytha",
         email="ardytha@dinus.ac.id",
         password=make_password("password123"),
+        is_verified=True,
     )
 
     print(f"✅ User berhasil dibuat! Login lewat /api/v2/auth/login dengan username '{teacher1.username}' & password 'password123' untuk dapat token JWT.")

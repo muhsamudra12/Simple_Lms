@@ -181,7 +181,15 @@ def index(request):
 
 def detail(request, course_id):
     course = get_object_or_404(Course, id=course_id)
-    comments = course.comments.all()
+
+    # Pagination komentar — sebelumnya SEMUA komentar course di-load
+    # sekaligus tanpa batas (`course.comments.all()` langsung dirender).
+    # Untuk course populer dengan ratusan/ribuan komentar, ini bikin
+    # halaman detail berat banget. 10 komentar per halaman.
+    total_comment_count = course.comments.count()
+    comment_paginator = Paginator(course.comments.all(), 10)
+    comment_page_number = request.GET.get('comment_page', 1)
+    comments = comment_paginator.get_page(comment_page_number)
 
     # Halaman detail kursus sekarang BISA dibuka tanpa login — supaya
     # pengunjung baru bisa lihat preview (deskripsi, daftar materi,
@@ -334,6 +342,7 @@ def detail(request, course_id):
     return render(request, 'tasks/detail.html', {
         'course': course,
         'comments': comments,
+        'total_comment_count': total_comment_count,
         'contents': contents,
         'done_ids': done_ids,
         'progress_pct': progress_pct,
@@ -396,10 +405,17 @@ def courses_page(request):
 # session Django biasa supaya navbar bisa langsung tahu status login
 # tanpa perlu JS menyimpan token di localStorage.
 # ─────────────────────────────────────────────
-def _send_verification_email(user):
+def _send_verification_email(request, user):
     """Bikin AccountToken baru + 'kirim' email verifikasi (lihat EMAIL_BACKEND di settings.py — default console, ganti env var buat SMTP asli)."""
     token = AccountToken.objects.create(user=user, token_type='verify_email')
-    link = f"{settings.SITE_BASE_URL.rstrip('/')}/verify-email/{token.token}/"
+    # Sengaja pakai request.build_absolute_uri() (BUKAN settings.SITE_BASE_URL
+    # statis) — supaya link di email otomatis pakai domain yang BENERAN
+    # diakses user saat itu (localhost pas dev, domain Railway pas
+    # production) tanpa gantung env var yang gampang lupa di-set. Kalau
+    # sebelumnya pakai SITE_BASE_URL dan env var-nya kosong, SEMUA link di
+    # email bakal ngarah ke "http://localhost:8000/..." yang sama sekali
+    # tidak bisa diakses user di production.
+    link = request.build_absolute_uri(f'/verify-email/{token.token}/')
     send_mail(
         subject="Verifikasi Email — LMS Academy",
         message=(
@@ -414,9 +430,9 @@ def _send_verification_email(user):
     )
 
 
-def _send_password_reset_email(user):
+def _send_password_reset_email(request, user):
     token = AccountToken.objects.create(user=user, token_type='reset_password')
-    link = f"{settings.SITE_BASE_URL.rstrip('/')}/reset-password/{token.token}/"
+    link = request.build_absolute_uri(f'/reset-password/{token.token}/')
     send_mail(
         subject="Reset Password — LMS Academy",
         message=(
@@ -509,6 +525,16 @@ def register_page(request):
             cache.set(throttle_key, attempts + 1, 60)
             messages.error(request, "Username sudah digunakan, coba yang lain.")
             return render(request, 'tasks/register.html', sticky)
+        elif User.objects.filter(email=email).exists():
+            # Sebelumnya TIDAK ada pengecekan ini sama sekali — siapapun
+            # bisa daftar berkali-kali pakai email yang SAMA. Ini bikin
+            # fitur "lupa password" & "kirim ulang verifikasi" jadi gak
+            # bisa diandalkan (keduanya cari user berdasarkan email —
+            # kalau ada 2+ akun dengan email sama, cuma yang PERTAMA
+            # ketemu yang ke-proses, yang lain tidak kebagian).
+            cache.set(throttle_key, attempts + 1, 60)
+            messages.error(request, "Email itu sudah dipakai akun lain.")
+            return render(request, 'tasks/register.html', sticky)
         else:
             user = User.objects.create(
                 username=username,
@@ -517,7 +543,7 @@ def register_page(request):
                 password=make_password(password),
                 is_verified=False,
             )
-            _send_verification_email(user)
+            _send_verification_email(request, user)
             cache.delete(throttle_key)
             messages.success(
                 request,
@@ -530,6 +556,13 @@ def register_page(request):
 
 
 def logout_view(request):
+    # Sebelumnya logout bisa di-trigger lewat GET (link biasa), padahal
+    # logout itu mengubah state (session). Konvensi keamanan web: aksi
+    # yang mengubah state harus lewat POST, supaya tidak bisa di-trigger
+    # diam-diam dari halaman lain (misal <img src=".../logout/"> di situs
+    # jahat bisa otomatis nge-logout user tanpa mereka sadar/setuju).
+    if request.method != 'POST':
+        return redirect('index')
     request.session.pop('user_id', None)
     messages.success(request, "Kamu berhasil logout.")
     return redirect('index')
@@ -576,7 +609,7 @@ def resend_verification_page(request):
         # tidak bisa dipakai buat nebak-nebak username/email mana yang
         # terdaftar di sistem (information disclosure).
         if user and not user.is_verified:
-            _send_verification_email(user)
+            _send_verification_email(request, user)
         messages.success(
             request,
             "Kalau akun dengan username/email itu ada dan belum terverifikasi, "
@@ -602,7 +635,7 @@ def forgot_password_page(request):
         # Sama seperti resend verifikasi — pesan generic, tidak bocorin
         # apakah email itu terdaftar atau tidak.
         if user:
-            _send_password_reset_email(user)
+            _send_password_reset_email(request, user)
         messages.success(
             request,
             "Kalau email itu terdaftar, link reset password sudah dikirim. Cek inbox/spam kamu."
@@ -696,6 +729,15 @@ def profile_page(request):
             messages.error(request, "Email itu sudah dipakai akun lain.")
             return render(request, 'tasks/profile.html', {'profile_user': user})
 
+        # Kalau email DIGANTI, status "terverifikasi" otomatis batal —
+        # email baru itu belum pernah benar-benar dikonfirmasi pemiliknya.
+        # Tanpa ini, user bisa ganti ke email siapa saja dan sistem tetap
+        # menganggapnya "terverifikasi" padahal email barunya gak pernah
+        # diklik link apapun.
+        email_changed = email != user.email
+        if email_changed:
+            user.is_verified = False
+
         user.fullname = fullname
         user.email = email
 
@@ -713,7 +755,16 @@ def profile_page(request):
             user.profile_image = new_image
 
         user.save()
-        messages.success(request, "Profil berhasil diperbarui.")
+
+        if email_changed:
+            _send_verification_email(request, user)
+            messages.success(
+                request,
+                "Profil berhasil diperbarui. Email kamu berubah, jadi perlu "
+                "diverifikasi ulang — cek inbox/spam ya."
+            )
+        else:
+            messages.success(request, "Profil berhasil diperbarui.")
         return redirect('profile_page')
 
     return render(request, 'tasks/profile.html', {'profile_user': user})

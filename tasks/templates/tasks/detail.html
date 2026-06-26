@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Materi: {{ course.name }}</title>
+    <meta name="description" content="{{ course.description|truncatewords:25 }}" />
+
+    <!-- Open Graph / Twitter Card — supaya link yang di-share (tombol
+         "Bagikan Kursus") nampilin preview judul, deskripsi & gambar
+         yang bagus di WhatsApp/medsos, bukan cuma link polos. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{{ course.name }} | LMS Academy" />
+    <meta property="og:description" content="{{ course.description|truncatewords:25 }}" />
+    <meta property="og:image" content="{{ course.image_url }}" />
+    <meta property="og:url" content="{{ request.build_absolute_uri }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ course.name }} | LMS Academy" />
+    <meta name="twitter:description" content="{{ course.description|truncatewords:25 }}" />
+    <meta name="twitter:image" content="{{ course.image_url }}" />
+
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230a0f2c'/%3E%3Ctext x='50' y='68' font-size='55' text-anchor='middle' fill='%23f59e0b'%3E🎓%3C/text%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -386,6 +402,28 @@
         min-width: 0;
         word-break: break-word;
       }
+      .comment-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 18px;
+      }
+      .comment-page-link {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        color: var(--blue);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+      .comment-page-link:hover { background: #eff6ff; }
+      .comment-page-current { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
       .selling-points {
         background: #f8fafc;
         border-radius: 10px;
@@ -824,10 +862,10 @@
           {% endfor %}
 
           <!-- SEKSI KOMENTAR -->
-          <div class="comment-section">
+          <div class="comment-section" id="komentar">
             <div class="section-heading">
               Komentar
-              <span class="count-badge">{{ comments|length }}</span>
+              <span class="count-badge">{{ total_comment_count }}</span>
             </div>
 
             <!-- FORM KOMENTAR -->
@@ -908,6 +946,18 @@
               </div>
             {% endif %}
 
+            {% if comments.paginator.num_pages > 1 %}
+            <div class="comment-pagination">
+              {% if comments.has_previous %}
+              <a href="?comment_page={{ comments.previous_page_number }}#komentar" class="comment-page-link"><i class="bi bi-chevron-left"></i></a>
+              {% endif %}
+              <span class="comment-page-current">Halaman {{ comments.number }} dari {{ comments.paginator.num_pages }}</span>
+              {% if comments.has_next %}
+              <a href="?comment_page={{ comments.next_page_number }}#komentar" class="comment-page-link"><i class="bi bi-chevron-right"></i></a>
+              {% endif %}
+            </div>
+            {% endif %}
+
           </div>
           <!-- END KOMENTAR -->
 
@@ -936,7 +986,7 @@
                 </div>
                 <div class="info-row">
                   <label>Total Komentar</label>
-                  <span><i class="bi bi-chat-dots-fill me-1 text-primary"></i>{{ comments|length }} komentar</span>
+                  <span><i class="bi bi-chat-dots-fill me-1 text-primary"></i>{{ total_comment_count }} komentar</span>
                 </div>
                 <hr style="border-color:#f1f5f9; margin: 16px 0;">
 

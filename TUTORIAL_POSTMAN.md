@@ -23,9 +23,12 @@ Dokumen ini panduan langkah-demi-langkah buat nguji REST API Simple LMS pakai Po
 
 Collection ini pakai beberapa **variable** (`sample_teacher_id`, `sample_course_id`, `sample_student_id`) supaya request `Create Course`, `Create Content`, dll tidak hardcode angka sembarangan. Tapi ID asli di database kamu pasti **beda** dengan punya orang lain (tergantung data yang sudah ada). Jadi sebelum mulai testing, samakan dulu:
 
-1. Jalankan request **"List Users"** (folder 3) → catat salah satu `id` di response, misal `id: 5`.
-2. Jalankan request **"List Courses"** (folder 2) → catat salah satu `id` di response, misal `id: 8`.
-3. Klik nama **collection** "Simple LMS API v2 - UAS" di sidebar kiri → tab **Variables** → isi `sample_teacher_id` dan `sample_course_id` dengan angka yang kamu catat tadi → **Save**.
+> ⚠️ **UPDATE KEAMANAN:** endpoint `GET /users`, `GET /contents`, `GET /enrollments`, dan `GET /course-members` **sekarang wajib pakai Bearer Token** (sebelumnya publik tanpa auth sama sekali — ini lubang keamanan yang sudah ditutup, karena endpoint ini sebelumnya bisa membocorkan email semua user / link video semua course berbayar / data enrollment ke siapapun tanpa login). Jadi **jalankan Langkah 1 (Register & Login) DULU** sebelum langkah-langkah di bawah ini, supaya `jwt_token` sudah terisi.
+
+1. Jalankan dulu **Langkah 1** di bawah (Register lalu Login) supaya `jwt_token` terisi.
+2. Jalankan request **"List Users (butuh token)"** (folder 3) → catat salah satu `id` di response, misal `id: 5`.
+3. Jalankan request **"List Courses"** (folder 2) → catat salah satu `id` di response, misal `id: 8` (endpoint ini tetap publik, tidak butuh token).
+4. Klik nama **collection** "Simple LMS API v2 - UAS" di sidebar kiri → tab **Variables** → isi `sample_teacher_id` dan `sample_course_id` dengan angka yang kamu catat tadi → **Save**.
 
 > ⚠️ Endpoint **Delete** (Delete Comment, Delete Enrollment, Delete Content, Delete Course Member) itu pakai ID milik resource itu sendiri (misal ID komentar), **bukan** `course_id`. Selalu cek dulu ID yang benar lewat request List/Get di folder yang sama sebelum klik Delete.
 
@@ -41,10 +44,15 @@ Collection ini pakai beberapa **variable** (`sample_teacher_id`, `sample_course_
    - Tab **Tests** di request ini otomatis menyimpan token itu ke variable `jwt_token` — cek di pojok kanan atas Postman (ikon mata 👁) untuk konfirmasi variable-nya sudah terisi.
    - 📸 *Screenshot response + screenshot tab Tests yang menunjukkan token tersimpan.*
 
-### Langkah 2 — Coba endpoint publik (folder "2. Courses", "3. Users", dst)
+> 💡 Catatan: endpoint API ini (`/api/...`) SENGAJA tetap longgar (tidak mewajibkan verifikasi email) — beda dengan **login lewat website** (`/login/`) yang sekarang mewajibkan email diverifikasi dulu sebelum bisa masuk. Pemisahan ini sengaja, supaya testing API lewat Postman tidak terganggu oleh flow verifikasi email yang sebenarnya ditujukan untuk pengguna web biasa.
+
+### Langkah 2 — Coba endpoint publik vs yang butuh login (folder "2. Courses", "3. Users", dst)
 
 1. Jalankan **"List Courses (pagination + filter)"** — endpoint ini publik, harus jalan tanpa perlu login (`200 OK`).
 2. Coba ubah parameter `search` jadi nama kursus kamu, atau `sort_by=-price` buat lihat fitur filtering & sorting beraksi.
+3. Jalankan **"List Users (butuh token)"** TANPA token (hapus/kosongkan dulu Bearer Token-nya) — harus ditolak `401 Unauthorized` (dulu ini publik, sekarang sudah di-fix supaya wajib login, karena sebelumnya endpoint ini membocorkan email semua user terdaftar ke siapapun).
+   - 📸 *Screenshot 401 ini bagus buat bukti AUTH sudah benar di endpoint yang sensitif.*
+4. Pasang lagi Bearer Token-nya, jalankan ulang **"List Users (butuh token)"** — sekarang harus `200 OK`.
 
 ### Langkah 3 — Coba endpoint yang butuh AUTH (Bearer Token)
 

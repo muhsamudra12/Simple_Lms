@@ -2,6 +2,7 @@ import time
 from typing import List, Optional
 from functools import wraps
 from ninja import NinjaAPI, Schema
+from pydantic import Field
 from ninja.pagination import paginate, PageNumberPagination
 from ninja.errors import HttpError
 from django.contrib.auth.hashers import make_password, check_password
@@ -87,6 +88,8 @@ class AuthOutput(Schema):
 def register_user(request, data: RegisterInput):
     if User.objects.filter(username=data.username).exists():
         return 400, {"message": "Username sudah digunakan!"}
+    if User.objects.filter(email=data.email).exists():
+        return 400, {"message": "Email sudah digunakan akun lain!"}
     User.objects.create(
         username=data.username,
         fullname=data.fullname,
@@ -146,20 +149,20 @@ class CourseOut(Schema):
 class CourseIn(Schema):
     name: str
     description: str
-    price: int
+    price: int = Field(ge=0, description="Harga dalam Rupiah, tidak boleh negatif")
     image_url: str = "https://placehold.co/600x400/0a0f2c/ffffff?text=LMS"
     category: str = "Umum"
     teacher_id: int
-    max_students: int = 100
+    max_students: int = Field(default=100, ge=0, description="Kuota peserta, tidak boleh negatif")
 
 class CourseUpdate(Schema):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[int] = None
+    price: Optional[int] = Field(default=None, ge=0)
     image_url: Optional[str] = None
     category: Optional[str] = None
     teacher_id: Optional[int] = None
-    max_students: Optional[int] = None
+    max_students: Optional[int] = Field(default=None, ge=0)
 
 class CourseContentOut(Schema):
     id: int

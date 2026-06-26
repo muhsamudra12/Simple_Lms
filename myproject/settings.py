@@ -61,9 +61,6 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@lms-academy.local')
 
-# Dipakai buat bangun link absolut di email (https://domain.com/verify-email/<token>/)
-SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://localhost:8000')
-
 # CSRF_TRUSTED_ORIGINS — WAJIB diisi untuk hosting di belakang proxy HTTPS
 # (Railway, Render, dll). Tanpa ini, semua form POST (login admin, form
 # komentar, dst) akan ditolak 403 "CSRF verification failed" walau
@@ -75,6 +72,31 @@ CSRF_TRUSTED_ORIGINS = [
     for host in os.environ.get('ALLOWED_HOSTS', '').split(',')
     if host.strip() and host.strip() != '*'
 ]
+
+# ── Security Hardening (production) ───────────────────────────────────
+# SEBELUMNYA tidak ada satupun setting ini — padahal project ini nyimpen
+# password & data pribadi user (PII), jadi penting buat di-harden.
+#
+# SECURE_PROXY_SSL_HEADER WAJIB ada karena Railway (dan platform serupa)
+# men-terminate HTTPS di reverse proxy-nya, lalu forward sebagai HTTP
+# biasa ke container ini. Tanpa header ini, Django gak akan tahu request
+# aslinya HTTPS atau bukan (request.is_secure() selalu False), yang
+# bikin SECURE_SSL_REDIRECT di bawah malah infinite-redirect-loop, dan
+# beberapa logic Django lain yang gantung ke is_secure() jadi salah.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+if not DEBUG:
+    # Paksa redirect ke HTTPS kalau ada yang somehow akses lewat HTTP.
+    SECURE_SSL_REDIRECT = True
+    # Cookie session & CSRF cuma dikirim browser lewat koneksi HTTPS —
+    # mencegah cookie ke-intip kalau ada downgrade ke HTTP di tengah jalan.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # HSTS — bilang ke browser "selalu pakai HTTPS buat domain ini selama
+    # N detik ke depan", supaya percobaan downgrade attack gagal duluan
+    # sebelum request pertama kali sempat dikirim plain HTTP.
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 7  # 7 hari, naikin pelan-pelan kalau sudah yakin stabil
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 
 # Application definition

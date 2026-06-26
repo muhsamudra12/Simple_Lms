@@ -1,7 +1,8 @@
-from django.test import TestCase
-from .models import User, Course, CourseMember, CourseContent, Enrollment
+from django.test import TestCase, Client
+from .models import User, Course, CourseMember, CourseContent, Enrollment, Comment, Certificate, AccountToken
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.contrib.auth.hashers import make_password, check_password
 
 # === 1. UJI MODEL COURSE ===
 class CourseModelTest(TestCase):
@@ -73,15 +74,21 @@ class CourseValidationTest(TestCase):
         self.teacher = User.objects.create(username='teacher1', fullname='Teacher One', email='t1@mail.com', password='admin')
 
     def test_invalid_price(self):
+        # PERBAIKAN: test ini sebelumnya bernama "test_invalid_price" tapi
+        # isinya malah memastikan harga NEGATIF berhasil tersimpan (bukan
+        # ditolak) — kebalikan dari maksud namanya, dan beda pola dengan
+        # test_empty_name di bawah yang benar mengetes PENOLAKAN data
+        # tidak valid lewat full_clean(). Sekarang Course.price pakai
+        # PositiveIntegerField (lihat models.py), jadi harga negatif
+        # seharusnya memang DITOLAK, bukan diterima.
         course = Course(
             name="Pemrograman Django",
             description="Belajar Django",
             price=-10000,
             teacher=self.teacher
         )
-        course.save()
-        retrieved_course = Course.objects.get(pk=course.pk)
-        self.assertEqual(retrieved_course.price, -10000)
+        with self.assertRaises(ValidationError):
+            course.full_clean()
 
     def test_empty_name(self):
         course = Course(
@@ -299,3 +306,273 @@ class EnrollmentApiTest(TestCase):
         # User KEDUA coba hapus enrollment milik user PERTAMA -> harus ditolak
         r2 = client.delete(f"/enrollments/{enrollment_id}", headers=self.headers2)
         self.assertEqual(r2.status_code, 403)
+
+
+# ═════════════════════════════════════════════════════════════
+# 🔓 ENROLLMENT GATING DI WEBSITE (bukan API)
+# Sebelumnya siapapun yang login bisa langsung akses materi tanpa
+# benar-benar "mengambil" course-nya dulu — gap ini sudah ditutup,
+# test di bawah memastikan gap itu TIDAK kembali muncul di masa depan.
+# ═════════════════════════════════════════════════════════════
+class WebEnrollmentGatingTest(TestCase):
+    def setUp(self):
+        self.teacher = User.objects.create(
+            username='web_enr_teacher', fullname='Teacher Web', email='webteacher@mail.com',
+            password=make_password('admin'),
+        )
+        self.student = User.objects.create(
+            username='web_enr_student', fullname='Student Web', email='webstudent@mail.com',
+            password=make_password('admin'), is_verified=True,
+        )
+        self.course = Course.objects.create(
+            name="Kursus Gating Test", description="d", price=50000,
+            teacher=self.teacher, max_students=1,
+        )
+        self.content1 = CourseContent.objects.create(
+            name="Materi 1", video_url="https://www.youtube.com/embed/aaa", course=self.course,
+        )
+        self.content2 = CourseContent.objects.create(
+            name="Materi 2", video_url="https://www.youtube.com/embed/bbb", course=self.course,
+        )
+        self.client = Client()
+        session = self.client.session
+        session['user_id'] = self.student.id
+        session.save()
+        self.client.cookies['sessionid'] = session.session_key
+
+    def test_guest_sees_preview_not_redirected_to_login(self):
+        """Guest (belum login) harus BISA buka halaman detail (preview), bukan langsung di-redirect ke login."""
+        guest = Client()
+        resp = guest.get(f'/course/{self.course.id}/')
+        self.assertEqual(resp.status_code, 200)
+
+    def test_only_first_content_playable_before_enrollment(self):
+        """Sebelum enroll, cuma materi PERTAMA yang videonya bisa diputar (preview gratis)."""
+        resp = self.client.get(f'/course/{self.course.id}/')
+        body = resp.content.decode()
+        self.assertIn('youtube.com/embed/aaa', body)       # materi pertama: terbuka
+        self.assertNotIn('youtube.com/embed/bbb', body)    # materi kedua: terkunci
+
+    def test_toggle_content_blocked_before_enrollment(self):
+        """Tandai-selesai materi harus ditolak kalau belum enroll, walau lewat POST langsung (skip UI)."""
+        from .models import ContentProgress
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content1.id})
+        self.assertFalse(ContentProgress.objects.filter(content=self.content1).exists())
+
+    def test_ambil_kursus_creates_enrollment_and_unlocks_content(self):
+        """Klik 'Ambil Kursus' harus bikin Enrollment status paid, dan langsung membuka semua materi."""
+        self.client.post(f'/course/{self.course.id}/', {'ambil_kursus': '1'})
+        enrollment = Enrollment.objects.get(course=self.course, student=self.student)
+        self.assertEqual(enrollment.status, 'paid')
+
+        resp = self.client.get(f'/course/{self.course.id}/')
+        self.assertIn('youtube.com/embed/bbb', resp.content.decode())  # materi kedua sekarang terbuka
+
+    def test_ambil_kursus_rejected_when_full(self):
+        """Kursus dengan max_students=1 yang sudah terisi harus menolak enrollment kedua."""
+        other_student = User.objects.create(
+            username='web_enr_other', fullname='Other', email='other@mail.com', password=make_password('admin'),
+        )
+        Enrollment.objects.create(course=self.course, student=other_student, status='paid')
+
+        self.client.post(f'/course/{self.course.id}/', {'ambil_kursus': '1'})
+        self.assertFalse(Enrollment.objects.filter(course=self.course, student=self.student).exists())
+
+    def test_cannot_enroll_twice(self):
+        self.client.post(f'/course/{self.course.id}/', {'ambil_kursus': '1'})
+        self.client.post(f'/course/{self.course.id}/', {'ambil_kursus': '1'})
+        self.assertEqual(Enrollment.objects.filter(course=self.course, student=self.student).count(), 1)
+
+
+# ═════════════════════════════════════════════════════════════
+# 🏆 SERTIFIKAT
+# ═════════════════════════════════════════════════════════════
+class CertificateTest(TestCase):
+    def setUp(self):
+        self.teacher = User.objects.create(
+            username='cert_teacher', fullname='Teacher Cert', email='certteacher@mail.com', password=make_password('admin'),
+        )
+        self.student = User.objects.create(
+            username='cert_student', fullname='Student Cert', email='certstudent@mail.com',
+            password=make_password('admin'), is_verified=True,
+        )
+        self.course = Course.objects.create(
+            name="Kursus Sertifikat Test", description="d", price=50000, teacher=self.teacher, max_students=10,
+        )
+        self.content = CourseContent.objects.create(
+            name="Satu-satunya Materi", video_url="https://www.youtube.com/embed/ccc", course=self.course,
+        )
+        Enrollment.objects.create(course=self.course, student=self.student, status='paid')
+        self.client = Client()
+        session = self.client.session
+        session['user_id'] = self.student.id
+        session.save()
+        self.client.cookies['sessionid'] = session.session_key
+
+    def test_certificate_issued_on_100_percent_completion(self):
+        self.assertFalse(Certificate.objects.filter(user=self.student, course=self.course).exists())
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id}, follow=True)
+        self.assertTrue(Certificate.objects.filter(user=self.student, course=self.course).exists())
+
+    def test_certificate_not_duplicated_on_toggle_back_and_forth(self):
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id}, follow=True)
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id}, follow=True)
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id}, follow=True)
+        self.assertEqual(Certificate.objects.filter(user=self.student, course=self.course).count(), 1)
+
+    def test_certificate_verification_page_public_no_login_required(self):
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id}, follow=True)
+        certificate = Certificate.objects.get(user=self.student, course=self.course)
+
+        public_client = Client()  # tanpa session sama sekali
+        resp = public_client.get(f'/certificate/{certificate.code}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(self.student.fullname, resp.content.decode())
+
+    def test_certificate_pdf_downloadable(self):
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id}, follow=True)
+        certificate = Certificate.objects.get(user=self.student, course=self.course)
+
+        resp = self.client.get(f'/certificate/{certificate.code}/download/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'application/pdf')
+
+
+# ═════════════════════════════════════════════════════════════
+# ✉️ VERIFIKASI EMAIL & LUPA PASSWORD
+# ═════════════════════════════════════════════════════════════
+class EmailVerificationTest(TestCase):
+    def test_new_user_is_unverified_by_default(self):
+        user = User.objects.create(username='unverif_user', fullname='X', email='x@mail.com', password=make_password('admin'))
+        self.assertFalse(user.is_verified)
+
+    def test_register_via_web_sends_verification_token(self):
+        client = Client()
+        client.post('/register/', {
+            'username': 'webreg_user', 'fullname': 'Web Reg', 'email': 'webreg@mail.com', 'password': 'rahasia123',
+        })
+        user = User.objects.get(username='webreg_user')
+        self.assertFalse(user.is_verified)
+        self.assertTrue(AccountToken.objects.filter(user=user, token_type='verify_email').exists())
+
+    def test_login_blocked_until_verified(self):
+        client = Client()
+        client.post('/register/', {
+            'username': 'blocked_user', 'fullname': 'Blocked', 'email': 'blocked@mail.com', 'password': 'rahasia123',
+        })
+        resp = client.post('/login/', {'username': 'blocked_user', 'password': 'rahasia123'})
+        self.assertIsNone(client.session.get('user_id'))
+        self.assertIn('belum diverifikasi', resp.content.decode())
+
+    def test_login_succeeds_after_verification(self):
+        client = Client()
+        client.post('/register/', {
+            'username': 'verified_user', 'fullname': 'Verified', 'email': 'verified@mail.com', 'password': 'rahasia123',
+        })
+        user = User.objects.get(username='verified_user')
+        token = AccountToken.objects.get(user=user, token_type='verify_email')
+
+        client.get(f'/verify-email/{token.token}/')
+        user.refresh_from_db()
+        self.assertTrue(user.is_verified)
+
+        client2 = Client()
+        client2.post('/login/', {'username': 'verified_user', 'password': 'rahasia123'})
+        self.assertIsNotNone(client2.session.get('user_id'))
+
+    def test_verification_token_cannot_be_reused(self):
+        user = User.objects.create(username='replay_user', fullname='Replay', email='replay@mail.com', password=make_password('admin'))
+        token = AccountToken.objects.create(user=user, token_type='verify_email')
+
+        client = Client()
+        client.get(f'/verify-email/{token.token}/')
+        client.get(f'/verify-email/{token.token}/')  # dipakai lagi
+
+        token.refresh_from_db()
+        self.assertTrue(token.used)
+        # Tidak crash dan user tetap berstatus verified (bukan ke-toggle balik)
+        user.refresh_from_db()
+        self.assertTrue(user.is_verified)
+
+    def test_existing_users_grandfathered_as_verified(self):
+        """User yang dibuat manual (seperti lewat seed_data/admin) HARUS tetap bisa login web tanpa verifikasi tambahan."""
+        user = User.objects.create(
+            username='grandfather_user', fullname='Old User', email='old@mail.com',
+            password=make_password('admin'), is_verified=True,
+        )
+        client = Client()
+        client.post('/login/', {'username': 'grandfather_user', 'password': 'admin'})
+        self.assertIsNotNone(client.session.get('user_id'))
+
+
+class PasswordResetTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(
+            username='resetpwd_user', fullname='Reset Pwd', email='resetpwd@mail.com',
+            password=make_password('passwordlama'), is_verified=True,
+        )
+
+    def test_forgot_password_creates_token(self):
+        client = Client()
+        client.post('/forgot-password/', {'email': 'resetpwd@mail.com'})
+        self.assertTrue(AccountToken.objects.filter(user=self.user, token_type='reset_password').exists())
+
+    def test_reset_password_changes_password_and_allows_login(self):
+        token = AccountToken.objects.create(user=self.user, token_type='reset_password')
+        client = Client()
+        client.post(f'/reset-password/{token.token}/', {
+            'password': 'passwordbaru456', 'confirm_password': 'passwordbaru456',
+        })
+        self.user.refresh_from_db()
+        self.assertTrue(check_password('passwordbaru456', self.user.password))
+        self.assertFalse(check_password('passwordlama', self.user.password))
+
+    def test_reset_password_mismatch_rejected(self):
+        token = AccountToken.objects.create(user=self.user, token_type='reset_password')
+        client = Client()
+        client.post(f'/reset-password/{token.token}/', {
+            'password': 'abc123', 'confirm_password': 'beda456',
+        })
+        token.refresh_from_db()
+        self.assertFalse(token.used)
+        self.user.refresh_from_db()
+        self.assertTrue(check_password('passwordlama', self.user.password))  # password lama tidak berubah
+
+    def test_used_reset_token_cannot_be_reused(self):
+        token = AccountToken.objects.create(user=self.user, token_type='reset_password')
+        client = Client()
+        client.post(f'/reset-password/{token.token}/', {'password': 'abc123', 'confirm_password': 'abc123'})
+
+        # Coba pakai token yang sama buat reset KEDUA kali ke password lain
+        resp = client.post(f'/reset-password/{token.token}/', {'password': 'xyz789', 'confirm_password': 'xyz789'})
+        self.user.refresh_from_db()
+        self.assertTrue(check_password('abc123', self.user.password))  # tetap password dari reset PERTAMA
+
+
+# ═════════════════════════════════════════════════════════════
+# ⭐ RATING KOMENTAR
+# ═════════════════════════════════════════════════════════════
+class CommentRatingTest(TestCase):
+    def setUp(self):
+        self.teacher = User.objects.create(username='rating_teacher', fullname='T', email='rt@mail.com', password=make_password('admin'))
+        self.course = Course.objects.create(name="Kursus Rating Test", description="d", price=10000, teacher=self.teacher, max_students=10)
+
+    def test_comment_rating_defaults_to_5_if_not_specified(self):
+        comment = Comment.objects.create(course=self.course, nama_komentator='A', isi_komentar='ok')
+        self.assertEqual(comment.rating, 5)
+
+    def test_web_comment_form_saves_chosen_rating(self):
+        client = Client()
+        client.post(f'/course/{self.course.id}/', {
+            'kirim_komentar': '1', 'nama_komentator': 'Budi', 'isi_komentar': 'Mantap', 'rating': '3',
+        })
+        comment = Comment.objects.get(nama_komentator='Budi')
+        self.assertEqual(comment.rating, 3)
+
+    def test_rating_out_of_range_clamped(self):
+        client = Client()
+        client.post(f'/course/{self.course.id}/', {
+            'kirim_komentar': '1', 'nama_komentator': 'Citra', 'isi_komentar': 'Test', 'rating': '99',
+        })
+        comment = Comment.objects.get(nama_komentator='Citra')
+        self.assertEqual(comment.rating, 5)  # diclamp ke maksimal 5

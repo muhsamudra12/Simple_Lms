@@ -1,6 +1,6 @@
 # tasks/models.py
 import uuid
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 
 #Model untuk User/Admin
@@ -24,11 +24,14 @@ class User(models.Model):
 class Course(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField()
-    price = models.IntegerField()
+    price = models.PositiveIntegerField(help_text="Harga dalam Rupiah. Isi 0 untuk kursus gratis.")
     image_url = models.URLField(default="https://placehold.co/600x400/0a0f2c/ffffff?text=LMS")
-    category = models.CharField(max_length=50, default="Umum")
+    category = models.CharField(max_length=50, default="Umum", db_index=True)
     teacher = models.ForeignKey(User, on_delete=models.CASCADE)  # Relasi ke User
-    max_students = models.IntegerField(default=100)  # Jumlah maksimum peserta
+    max_students = models.PositiveIntegerField(
+        default=100,
+        help_text="Jumlah maksimum peserta. Isi 0 kalau mau menutup pendaftaran sementara.",
+    )  # Jumlah maksimum peserta
     def __str__(self): return self.name
 
 # Model untuk Konten Video Materi
@@ -115,7 +118,7 @@ class CourseMember(models.Model):
 class Enrollment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enrollments')
-    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('paid', 'Paid')], default='pending')
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('paid', 'Paid')], default='pending', db_index=True)
 
     class Meta:
         # Constraint agar satu siswa tidak mendaftar di kelas yang sama berkali-kali
@@ -134,15 +137,39 @@ class Enrollment(models.Model):
         # clean() dipanggil otomatis oleh Django Admin (lewat ModelForm.full_clean())
         # SEBELUM proses save() — jadi kalau kuota penuh, errornya tampil rapi
         # sebagai form error di Admin, bukan crash 500 Internal Server Error.
+        # Versi di sini SENGAJA tetap pakai pengecekan sederhana (bukan versi
+        # locking di save()) karena cuma buat preview pesan error yang nyaman
+        # di form — penentu FINAL & aman dari race condition tetap di save().
         super().clean()
         self._check_capacity()
 
     def save(self, *args, **kwargs):
-        # Pengecekan ini tetap dipertahankan di save() sebagai jaring pengaman
-        # untuk jalur yang TIDAK lewat ModelForm (misal endpoint API yang
-        # langsung panggil .save() tanpa full_clean()).
-        self._check_capacity()
-        super().save(*args, **kwargs)
+        if self.pk is not None:
+            # Update enrollment yang sudah ada (misal ganti status pending->paid)
+            # tidak menambah jumlah peserta, jadi tidak perlu re-cek kuota/lock.
+            super().save(*args, **kwargs)
+            return
+
+        # PERBAIKAN RACE CONDITION: versi SEBELUMNYA cuma "hitung dulu, baru
+        # simpan" tanpa lock apapun — kalau 2 request masuk BERSAMAAN pas
+        # sisa 1 slot, KEDUANYA bisa baca hitungan yang sama (sebelum
+        # salah satu sempat commit), sehingga KEDUANYA lolos pengecekan dan
+        # kuota jadi kelebihan dari max_students.
+        #
+        # Di-fix pakai `select_for_update()` di dalam transaction: baris
+        # Course ini di-LOCK selama transaksi berjalan, jadi request lain
+        # yang mencoba enroll ke course YANG SAMA wajib menunggu sampai
+        # request pertama selesai commit/rollback — tidak ada lagi 2 request
+        # yang bisa membaca hitungan "stale" yang sama-sama dianggap aman.
+        with transaction.atomic():
+            locked_course = Course.objects.select_for_update().get(pk=self.course_id)
+            current_count = Enrollment.objects.filter(course=locked_course).count()
+            if current_count >= locked_course.max_students:
+                raise ValidationError(
+                    f"Kursus '{locked_course.name}' sudah penuh "
+                    f"(maksimal {locked_course.max_students} peserta)."
+                )
+            super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.student.username} → {self.course.name} ({self.status})"
