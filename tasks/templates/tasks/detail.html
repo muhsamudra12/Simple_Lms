@@ -1126,7 +1126,16 @@
           alertEl.style.marginBottom = '0';
           alertEl.style.paddingTop = '0';
           alertEl.style.paddingBottom = '0';
-          setTimeout(function () { alertEl.remove(); }, 400);
+          setTimeout(function () {
+            var wrapper = alertEl.closest('.flash-area');
+            alertEl.remove();
+            // Wrapper ".flash-area" punya margin-bottom sendiri (mb-4) yang
+            // tidak ikut hilang cuma karena alert di dalamnya sudah dihapus
+            // — kalau dibiarkan, nyisa gap kosong kecil. Dibersihkan juga.
+            if (wrapper && !wrapper.querySelector('.alert-custom')) {
+              wrapper.remove();
+            }
+          }, 400);
         }, 4000 + i * 300);
       });
     </script>

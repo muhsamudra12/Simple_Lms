@@ -646,7 +646,7 @@
 
     <!-- FLASH MESSAGES -->
     {% if messages %}
-    <div class="container" style="padding-top: 18px;">
+    <div class="container flash-messages-wrapper" style="padding-top: 18px;">
       {% for message in messages %}
         {% if message.tags == 'error' %}
         <div class="alert-custom alert-error-custom">
@@ -901,7 +901,19 @@
           alertEl.style.marginBottom = '0';
           alertEl.style.paddingTop = '0';
           alertEl.style.paddingBottom = '0';
-          setTimeout(function () { alertEl.remove(); }, 400);
+          setTimeout(function () {
+            var wrapper = alertEl.closest('.flash-messages-wrapper');
+            alertEl.remove();
+            // PENTING: wrapper pembungkus ('.flash-messages-wrapper') punya
+            // padding-top sendiri yang TIDAK ikut hilang cuma karena isinya
+            // (alert) sudah dihapus — kalau dibiarkan, nyisa kotak kosong
+            // dengan padding itu doang, kelihatan kayak garis putih nyangkut
+            // di antara navbar & hero. Makanya wrapper-nya juga harus
+            // di-hapus kalau sudah gak ada alert lagi di dalamnya.
+            if (wrapper && !wrapper.querySelector('.alert-custom')) {
+              wrapper.remove();
+            }
+          }, 400);
         }, 4000 + i * 300);
       });
     </script>
