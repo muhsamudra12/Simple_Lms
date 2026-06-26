@@ -1,10 +1,15 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Course, Comment, User, CourseContent, ContentProgress, Certificate, Enrollment
+from .models import (
+    Course, Comment, User, CourseContent, ContentProgress, Certificate,
+    Enrollment, AccountToken,
+)
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
+from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import Avg, Max, Min, Count
 from django.db.models.functions import Cast
@@ -49,6 +54,9 @@ def _build_preview_url(video_url, duration_seconds):
 
 def index(request):
     query = request.GET.get('q')
+    category_filter = request.GET.get('category', '').strip()
+    price_filter = request.GET.get('price_range', '').strip()
+
     # Sebelumnya queryset ini TIDAK punya order_by() eksplisit, padahal
     # langsung dipaginate — Django sampai ngasih peringatan
     # (UnorderedObjectListWarning) karena tanpa urutan pasti, hasil per
@@ -61,6 +69,30 @@ def index(request):
     if query:
         courses = courses.filter(name__icontains=query)
 
+    if category_filter:
+        courses = courses.filter(category=category_filter)
+
+    # Filter rentang harga — pakai preset (bukan input angka manual) biar
+    # gampang dipakai dan gak butuh validasi rentang angka custom.
+    PRICE_RANGES = {
+        'free': (0, 0),
+        'under_100k': (0, 99999),
+        '100k_300k': (100000, 300000),
+        'above_300k': (300001, None),
+    }
+    if price_filter in PRICE_RANGES:
+        min_p, max_p = PRICE_RANGES[price_filter]
+        courses = courses.filter(price__gte=min_p)
+        if max_p is not None:
+            courses = courses.filter(price__lte=max_p)
+
+    # Daftar kategori buat dropdown filter — diambil dinamis dari data
+    # yang ada (bukan hardcode), karena `category` di model bebas teks.
+    available_categories = (
+        Course.objects.exclude(category__isnull=True).exclude(category__exact='')
+        .values_list('category', flat=True).distinct().order_by('category')
+    )
+
     # Pagination — sebelumnya semua kursus di-load sekaligus tanpa batas,
     # jadi kalau jumlah kursus terus bertambah, halaman beranda makin
     # berat. 9 kursus per halaman (pas untuk grid 3 kolom x 3 baris).
@@ -68,16 +100,27 @@ def index(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    # Progress per kursus sekarang dihitung dari ContentProgress di
-    # database (per-video, milik user yang login), bukan dari session
-    # browser lagi — sebelumnya progress hilang kalau ganti device/clear
-    # cookie, dan tidak bisa dilihat/diedit dari Admin sama sekali.
+    # PERBAIKAN PERFORMA: sebelumnya tiap kartu course manggil
+    # `.count()`/`.aggregate()` sendiri² (contents, comments, enrollments)
+    # — untuk 9 course di 1 halaman ini jadi >100 query database, padahal
+    # cuma nampilin 9 kartu! `.count()`/`.aggregate()` SELALU bikin query
+    # baru ke database, gak peduli udah di-prefetch atau belum.
     #
-    # Rating per kursus (gaya Udemy/Coursera: bintang + rata-rata + jumlah
-    # ulasan langsung MENYATU di kartu kursusnya) dihitung di sini juga —
-    # menggantikan section testimoni terpisah sebelumnya, supaya rating &
-    # komentar terasa jadi satu kesatuan sama course-nya, bukan section
-    # yang berdiri sendiri di tempat lain.
+    # Di-fix pakai `prefetch_related`: semua content/comment/enrollment
+    # dari kursus-kursus di halaman ini di-ambil sekaligus (3 query
+    # total, bukan 3 query PER KURSUS), lalu dihitung manual di Python
+    # dari hasil prefetch (`.all()`, bukan `.count()`/`.aggregate()` lagi).
+    #
+    # Sengaja TIDAK pakai `.annotate(Count(...), Avg(...))` gabungan di
+    # satu query untuk relasi yang berbeda (contents + comments +
+    # enrollments sekaligus) — itu rawan bug "JOIN fan-out" di Django:
+    # angka rata-rata rating bisa salah/menggelembung karena baris
+    # comment ke-duplikat sebanyak baris content lewat JOIN gabungan.
+    # Pakai prefetch + hitung manual lebih lambat dikit tapi DIJAMIN benar.
+    page_obj.object_list = list(
+        page_obj.object_list.prefetch_related('contents', 'comments', 'enrollments')
+    )
+
     user_id = request.session.get('user_id')
 
     # Status enrollment per kursus di kartu homepage — diambil sekali pakai
@@ -92,20 +135,27 @@ def index(request):
         )
 
     for c in page_obj:
-        total = c.contents.count()
+        all_contents = c.contents.all()       # sudah dari cache prefetch, bukan query baru
+        all_comments = c.comments.all()       # sudah dari cache prefetch, bukan query baru
+        all_enrollments = c.enrollments.all() # sudah dari cache prefetch, bukan query baru
+
+        total = len(all_contents)
         c.total_content = total
         c.is_enrolled = c.id in enrolled_course_ids
-        enrolled_count = Enrollment.objects.filter(course=c).count()
-        c.slots_left = max(0, c.max_students - enrolled_count)
+        c.slots_left = max(0, c.max_students - len(all_enrollments))
+
         if user_id and c.is_enrolled and total > 0:
-            done = ContentProgress.objects.filter(user_id=user_id, content__course=c).count()
+            content_ids_in_course = {ct.id for ct in all_contents}
+            done = ContentProgress.objects.filter(
+                user_id=user_id, content_id__in=content_ids_in_course
+            ).count()
             c.progress_pct = int(done / total * 100)
         else:
             c.progress_pct = 0
 
-        course_rating = c.comments.aggregate(avg=Avg('rating'), total=Count('id'))
-        c.avg_rating = round(course_rating['avg'], 1) if course_rating['avg'] else None
-        c.review_count = course_rating['total']
+        ratings = [com.rating for com in all_comments]
+        c.avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
+        c.review_count = len(ratings)
 
     # Statistik hero section — SEBELUMNYA pakai `courses|length` di
     # template, yang cuma ngitung jumlah kursus DI HALAMAN PAGINATION INI
@@ -122,6 +172,10 @@ def index(request):
         'total_courses': total_courses,
         'avg_rating': round(rating_stats['avg_rating'], 1) if rating_stats['avg_rating'] else None,
         'total_reviews': rating_stats['total_reviews'],
+        'available_categories': available_categories,
+        'category_filter': category_filter,
+        'price_filter': price_filter,
+        'is_filtered': bool(query or category_filter or price_filter),
     })
 
 
@@ -342,6 +396,41 @@ def courses_page(request):
 # session Django biasa supaya navbar bisa langsung tahu status login
 # tanpa perlu JS menyimpan token di localStorage.
 # ─────────────────────────────────────────────
+def _send_verification_email(user):
+    """Bikin AccountToken baru + 'kirim' email verifikasi (lihat EMAIL_BACKEND di settings.py — default console, ganti env var buat SMTP asli)."""
+    token = AccountToken.objects.create(user=user, token_type='verify_email')
+    link = f"{settings.SITE_BASE_URL.rstrip('/')}/verify-email/{token.token}/"
+    send_mail(
+        subject="Verifikasi Email — LMS Academy",
+        message=(
+            f"Hai {user.fullname},\n\n"
+            f"Terima kasih sudah daftar di LMS Academy. Klik link di bawah untuk verifikasi email kamu:\n\n"
+            f"{link}\n\n"
+            f"Link ini berlaku 24 jam. Kalau bukan kamu yang daftar, abaikan saja email ini."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=True,  # jangan sampai registrasi gagal total cuma karena SMTP lagi bermasalah
+    )
+
+
+def _send_password_reset_email(user):
+    token = AccountToken.objects.create(user=user, token_type='reset_password')
+    link = f"{settings.SITE_BASE_URL.rstrip('/')}/reset-password/{token.token}/"
+    send_mail(
+        subject="Reset Password — LMS Academy",
+        message=(
+            f"Hai {user.fullname},\n\n"
+            f"Ada permintaan reset password untuk akun kamu. Klik link di bawah (berlaku 1 jam):\n\n"
+            f"{link}\n\n"
+            f"Kalau bukan kamu yang minta, abaikan saja email ini — password kamu tidak akan berubah."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=True,
+    )
+
+
 def login_page(request):
     if request.session.get('user_id'):
         return redirect('index')
@@ -362,6 +451,19 @@ def login_page(request):
 
         user = User.objects.filter(username=username).first()
         if user and check_password(password, user.password):
+            if not user.is_verified:
+                # Sengaja TIDAK login-kan dulu — verifikasi email wajib
+                # sebelum bisa masuk web (beda dengan endpoint API login
+                # yang tetap longgar, dipakai buat testing/Postman).
+                messages.error(
+                    request,
+                    "Email kamu belum diverifikasi. Cek inbox/folder spam, "
+                    "atau kirim ulang link verifikasi di bawah."
+                )
+                return render(request, 'tasks/login.html', {
+                    'username': username,
+                    'show_resend_verification': True,
+                })
             request.session['user_id'] = user.id
             cache.delete(throttle_key)
             messages.success(request, f"Selamat datang kembali, {user.fullname}!")
@@ -408,14 +510,20 @@ def register_page(request):
             messages.error(request, "Username sudah digunakan, coba yang lain.")
             return render(request, 'tasks/register.html', sticky)
         else:
-            User.objects.create(
+            user = User.objects.create(
                 username=username,
                 fullname=fullname,
                 email=email,
                 password=make_password(password),
+                is_verified=False,
             )
+            _send_verification_email(user)
             cache.delete(throttle_key)
-            messages.success(request, "Registrasi berhasil! Silakan login.")
+            messages.success(
+                request,
+                "Registrasi berhasil! Cek email kamu (termasuk folder spam) "
+                "untuk link verifikasi sebelum bisa login."
+            )
             return redirect('login_page')
 
     return render(request, 'tasks/register.html')
@@ -425,6 +533,111 @@ def logout_view(request):
     request.session.pop('user_id', None)
     messages.success(request, "Kamu berhasil logout.")
     return redirect('index')
+
+
+def verify_email_page(request, token):
+    account_token = AccountToken.objects.filter(
+        token=token, token_type='verify_email'
+    ).select_related('user').first()
+
+    if not account_token:
+        messages.error(request, "Link verifikasi tidak valid.")
+    elif account_token.used:
+        messages.success(request, "Email kamu sudah pernah diverifikasi sebelumnya. Silakan login.")
+    elif account_token.is_expired():
+        messages.error(request, "Link verifikasi sudah kedaluwarsa. Minta link baru di bawah ini.")
+        return render(request, 'tasks/login.html', {'show_resend_verification': True})
+    else:
+        account_token.user.is_verified = True
+        account_token.user.save()
+        account_token.used = True
+        account_token.save()
+        messages.success(request, "Email berhasil diverifikasi! Sekarang kamu bisa login.")
+
+    return redirect('login_page')
+
+
+def resend_verification_page(request):
+    if request.method == 'POST':
+        username_or_email = request.POST.get('identifier', '').strip()
+
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        throttle_key = f"resend_verif_throttle_{ip}"
+        if cache.get(throttle_key):
+            messages.error(request, "Tunggu sebentar sebelum minta kirim ulang lagi.")
+            return redirect('login_page')
+        cache.set(throttle_key, True, 60)
+
+        user = User.objects.filter(
+            db_models.Q(username=username_or_email) | db_models.Q(email=username_or_email)
+        ).first()
+        # Pesan SENGAJA generic — tidak membedakan "user tidak ada" vs
+        # "sudah terverifikasi" vs "berhasil dikirim", supaya endpoint ini
+        # tidak bisa dipakai buat nebak-nebak username/email mana yang
+        # terdaftar di sistem (information disclosure).
+        if user and not user.is_verified:
+            _send_verification_email(user)
+        messages.success(
+            request,
+            "Kalau akun dengan username/email itu ada dan belum terverifikasi, "
+            "link verifikasi baru sudah dikirim."
+        )
+        return redirect('login_page')
+
+    return render(request, 'tasks/login.html', {'show_resend_verification': True})
+
+
+def forgot_password_page(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        throttle_key = f"forgot_pwd_throttle_{ip}"
+        if cache.get(throttle_key):
+            messages.error(request, "Tunggu sebentar sebelum minta reset lagi.")
+            return redirect('forgot_password_page')
+        cache.set(throttle_key, True, 60)
+
+        user = User.objects.filter(email=email).first()
+        # Sama seperti resend verifikasi — pesan generic, tidak bocorin
+        # apakah email itu terdaftar atau tidak.
+        if user:
+            _send_password_reset_email(user)
+        messages.success(
+            request,
+            "Kalau email itu terdaftar, link reset password sudah dikirim. Cek inbox/spam kamu."
+        )
+        return redirect('login_page')
+
+    return render(request, 'tasks/forgot_password.html')
+
+
+def reset_password_page(request, token):
+    account_token = AccountToken.objects.filter(
+        token=token, token_type='reset_password'
+    ).select_related('user').first()
+
+    if not account_token or not account_token.is_valid():
+        messages.error(request, "Link reset password tidak valid atau sudah kedaluwarsa. Minta link baru.")
+        return redirect('forgot_password_page')
+
+    if request.method == 'POST':
+        password = request.POST.get('password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        if len(password) < 6:
+            messages.error(request, "Password minimal 6 karakter.")
+        elif password != confirm_password:
+            messages.error(request, "Konfirmasi password tidak cocok.")
+        else:
+            account_token.user.password = make_password(password)
+            account_token.user.save()
+            account_token.used = True
+            account_token.save()
+            messages.success(request, "Password berhasil diubah! Silakan login dengan password baru.")
+            return redirect('login_page')
+
+    return render(request, 'tasks/reset_password.html', {'token': token})
 
 
 def profile_page(request):

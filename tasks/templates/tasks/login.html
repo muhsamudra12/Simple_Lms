@@ -155,7 +155,7 @@
             <label class="form-label">Username</label>
             <input type="text" name="username" class="form-control" placeholder="username kamu" value="{{ username|default:'' }}" required autofocus />
           </div>
-          <div class="mb-4">
+          <div class="mb-2">
             <label class="form-label">Password</label>
             <div class="password-wrap">
               <input type="password" name="password" id="passwordInput" class="form-control" placeholder="••••••••" required />
@@ -164,8 +164,22 @@
               </button>
             </div>
           </div>
+          <div class="text-end mb-4">
+            <a href="{% url 'forgot_password_page' %}" style="font-size:0.8rem; color:var(--blue); font-weight:600; text-decoration:none;">Lupa password?</a>
+          </div>
           <button type="submit" class="btn-auth"><i class="bi bi-box-arrow-in-right me-1"></i>Masuk</button>
         </form>
+
+        {% if show_resend_verification %}
+        <div style="margin-top:18px; padding-top:18px; border-top:1px solid #f1f5f9;">
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Belum dapat email verifikasi atau linknya kedaluwarsa?</p>
+          <form method="POST" action="{% url 'resend_verification_page' %}" class="d-flex gap-2">
+            {% csrf_token %}
+            <input type="text" name="identifier" class="form-control" placeholder="Username atau email" required style="font-size:0.85rem;" />
+            <button type="submit" class="btn-auth" style="width:auto; white-space:nowrap; padding:10px 16px;">Kirim Ulang</button>
+          </form>
+        </div>
+        {% endif %}
 
         <div class="auth-footer">
           Belum punya akun? <a href="{% url 'register_page' %}">Daftar di sini</a>

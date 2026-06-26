@@ -11,6 +11,11 @@ class User(models.Model):
     password = models.CharField(max_length=128)
     token = models.CharField(max_length=255, null=True, blank=True) 
     profile_image = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
+    is_verified = models.BooleanField(
+        default=False,
+        verbose_name="Email Terverifikasi",
+        help_text="User wajib klik link verifikasi yang dikirim ke email sebelum bisa login di web.",
+    )
 
     def __str__(self): 
         return self.fullname
@@ -184,3 +189,33 @@ class Certificate(models.Model):
 
     def __str__(self):
         return f"Sertifikat {self.user.fullname} — {self.course.name}"
+
+
+# Model token sekali-pakai buat link yang dikirim ke email user — dipakai
+# untuk DUA keperluan (verifikasi email & reset password) lewat satu model
+# yang sama (`token_type` yang bedain), daripada bikin 2 model nyaris
+# identik terpisah.
+class AccountToken(models.Model):
+    TOKEN_TYPES = [
+        ('verify_email', 'Verifikasi Email'),
+        ('reset_password', 'Reset Password'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='account_tokens')
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    token_type = models.CharField(max_length=20, choices=TOKEN_TYPES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+
+    def is_expired(self):
+        from django.utils import timezone
+        # Link verifikasi email berlaku lebih lama (24 jam, kasih waktu
+        # cek inbox) dibanding link reset password (1 jam — lebih sensitif
+        # kalau ke-intip orang lain di inbox yang sama).
+        hours = 1 if self.token_type == 'reset_password' else 24
+        return timezone.now() > self.created_at + timezone.timedelta(hours=hours)
+
+    def is_valid(self):
+        return not self.used and not self.is_expired()
+
+    def __str__(self):
+        return f"{self.get_token_type_display()} — {self.user.username}"

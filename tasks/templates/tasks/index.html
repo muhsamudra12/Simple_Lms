@@ -214,6 +214,34 @@
         justify-content: center;
       }
       .search-wrap button:hover { background: var(--blue-light); }
+
+      .filter-row {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .filter-select {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .filter-select option { color: var(--text-main); }
+      .filter-apply-btn {
+        background: var(--accent);
+        color: var(--navy);
+        border: none;
+        border-radius: 10px;
+        padding: 8px 16px;
+        font-weight: 700;
+        font-size: 0.82rem;
+      }
       .hero-stats {
         display: flex;
         justify-content: center;
@@ -591,6 +619,23 @@
             <button type="submit"><i class="bi bi-search"></i></button>
           </form>
         </div>
+        <form action="{% url 'index' %}" method="GET" class="filter-row">
+          <input type="hidden" name="q" value="{{ query|default:'' }}" />
+          <select name="category" class="filter-select" onchange="this.form.submit()">
+            <option value="">Semua Kategori</option>
+            {% for cat in available_categories %}
+            <option value="{{ cat }}" {% if cat == category_filter %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+          <select name="price_range" class="filter-select" onchange="this.form.submit()">
+            <option value="">Semua Harga</option>
+            <option value="free" {% if price_filter == 'free' %}selected{% endif %}>Gratis</option>
+            <option value="under_100k" {% if price_filter == 'under_100k' %}selected{% endif %}>Di bawah Rp100rb</option>
+            <option value="100k_300k" {% if price_filter == '100k_300k' %}selected{% endif %}>Rp100rb - Rp300rb</option>
+            <option value="above_300k" {% if price_filter == 'above_300k' %}selected{% endif %}>Di atas Rp300rb</option>
+          </select>
+          <noscript><button type="submit" class="filter-apply-btn">Terapkan</button></noscript>
+        </form>
         <div class="hero-stats">
           <div class="hero-stat"><strong data-count="{{ total_courses }}">0</strong> Kursus</div>
           {% if avg_rating %}
@@ -606,10 +651,11 @@
     <!-- CONTENT -->
     <div class="container" style="padding-top: 48px; padding-bottom: 20px;">
 
-      {% if query %}
+      {% if is_filtered %}
       <div class="query-info">
-        <i class="bi bi-search text-primary"></i>
-        Hasil pencarian untuk: <strong>"{{ query }}"</strong> — {{ courses|length }} kursus ditemukan
+        <i class="bi bi-funnel-fill text-primary"></i>
+        {% if query %}Hasil pencarian untuk: <strong>"{{ query }}"</strong>{% else %}Hasil filter{% endif %}
+        — {{ total_courses }} kursus ditemukan
         <a href="{% url 'index' %}"><i class="bi bi-x-circle me-1"></i>Hapus filter</a>
       </div>
       {% endif %}
@@ -718,7 +764,7 @@
       {% if page_obj.paginator.num_pages > 1 %}
       <div class="pagination-wrap">
         {% if page_obj.has_previous %}
-          <a class="page-link-custom" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}"><i class="bi bi-chevron-left"></i></a>
+          <a class="page-link-custom" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if category_filter %}&category={{ category_filter|urlencode }}{% endif %}{% if price_filter %}&price_range={{ price_filter }}{% endif %}"><i class="bi bi-chevron-left"></i></a>
         {% else %}
           <span class="page-link-custom disabled"><i class="bi bi-chevron-left"></i></span>
         {% endif %}
@@ -727,12 +773,12 @@
           {% if num == page_obj.number %}
             <span class="page-link-custom active">{{ num }}</span>
           {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-            <a class="page-link-custom" href="?page={{ num }}{% if query %}&q={{ query|urlencode }}{% endif %}">{{ num }}</a>
+            <a class="page-link-custom" href="?page={{ num }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if category_filter %}&category={{ category_filter|urlencode }}{% endif %}{% if price_filter %}&price_range={{ price_filter }}{% endif %}">{{ num }}</a>
           {% endif %}
         {% endfor %}
 
         {% if page_obj.has_next %}
-          <a class="page-link-custom" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}"><i class="bi bi-chevron-right"></i></a>
+          <a class="page-link-custom" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if category_filter %}&category={{ category_filter|urlencode }}{% endif %}{% if price_filter %}&price_range={{ price_filter }}{% endif %}"><i class="bi bi-chevron-right"></i></a>
         {% else %}
           <span class="page-link-custom disabled"><i class="bi bi-chevron-right"></i></span>
         {% endif %}

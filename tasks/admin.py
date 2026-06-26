@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password, identify_hasher
 from django.utils.html import format_html
-from .models import User, Course, CourseContent, Comment, CourseMember, Enrollment, ContentProgress, Certificate
+from django.db.models import Sum, Count, Q
+from .models import User, Course, CourseContent, Comment, CourseMember, Enrollment, ContentProgress, Certificate, AccountToken
 # Impor library import_export
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
@@ -10,6 +11,54 @@ from import_export.admin import ImportExportModelAdmin
 admin.site.site_header = "LMS Academy — Admin Panel"
 admin.site.site_title = "LMS Academy Admin"
 admin.site.index_title = "Dashboard Administrasi Simple LMS"
+
+# ── Dashboard Ringkasan ───────────────────────────────────────
+# Sebelumnya halaman utama Admin cuma nampilin daftar model standar
+# Django (User, Course, dst) tanpa ringkasan apa-apa — admin harus buka
+# satu-satu buat tau total siswa, revenue, atau course paling populer.
+#
+# Caranya: "monkey-patch" method `index()` milik `admin.site` (instance
+# AdminSite global yang dipakai semua `@admin.register`) supaya nyisipin
+# data statistik ke `extra_context` sebelum render halaman index bawaan
+# Django — pendekatan standar buat nambah dashboard TANPA harus ganti
+# seluruh AdminSite atau bikin halaman terpisah.
+_original_admin_index = admin.site.index
+
+
+def _admin_index_with_stats(request, extra_context=None):
+    extra_context = extra_context or {}
+
+    total_courses = Course.objects.count()
+    total_students = User.objects.count()
+    total_teachers = Course.objects.values('teacher_id').distinct().count()
+    paid_enrollments = Enrollment.objects.filter(status='paid')
+    total_enrollments = paid_enrollments.count()
+    pending_enrollments = Enrollment.objects.filter(status='pending').count()
+
+    # Revenue kasar — SEKADAR ESTIMASI dari harga course x jumlah
+    # enrollment status 'paid'. BUKAN angka transaksi sungguhan, karena
+    # project ini belum terhubung ke payment gateway apapun — "ambil
+    # kursus" langsung set status 'paid' tanpa pembayaran real.
+    revenue = paid_enrollments.aggregate(total=Sum('course__price'))['total'] or 0
+
+    popular_courses = (
+        Course.objects.annotate(enrolled_count=Count('enrollments', filter=Q(enrollments__status='paid')))
+        .order_by('-enrolled_count')[:5]
+    )
+
+    extra_context['dashboard_stats'] = {
+        'total_courses': total_courses,
+        'total_students': total_students,
+        'total_teachers': total_teachers,
+        'total_enrollments': total_enrollments,
+        'pending_enrollments': pending_enrollments,
+        'revenue': revenue,
+        'popular_courses': popular_courses,
+    }
+    return _original_admin_index(request, extra_context)
+
+
+admin.site.index = _admin_index_with_stats
 
 # ── User ──────────────────────────────────────────────────
 class UserResource(resources.ModelResource):
@@ -39,14 +88,21 @@ class UserResource(resources.ModelResource):
 @admin.register(User)
 class UserAdmin(ImportExportModelAdmin):
     resource_classes = [UserResource]
-    list_display = ('fullname', 'username', 'email', 'profile_image_preview')
+    list_display = ('fullname', 'username', 'email', 'is_verified', 'profile_image_preview')
+    list_filter = ('is_verified',)
     search_fields = ('fullname', 'username', 'email')
+    actions = ['verify_manually']
 
     def profile_image_preview(self, obj):
         if obj.profile_image:
             return format_html('<img src="{}" style="height:32px;width:32px;border-radius:50%;object-fit:cover;" />', obj.profile_image.url)
         return "—"
     profile_image_preview.short_description = "Foto"
+
+    @admin.action(description="Verifikasi email secara manual (kalau SMTP belum di-setup/email gak ke-deliver)")
+    def verify_manually(self, request, queryset):
+        updated = queryset.update(is_verified=True)
+        self.message_user(request, f"{updated} user berhasil di-verifikasi manual.")
 
 
 # ── CourseContent (Inline di dalam Course) ─────────────────
@@ -130,3 +186,17 @@ class CertificateAdmin(ImportExportModelAdmin):
     search_fields = ('user__username', 'user__fullname', 'course__name', 'code')
     readonly_fields = ('code', 'issued_at')
     autocomplete_fields = ['user', 'course']
+
+
+# ── AccountToken (link verifikasi email / reset password) ──
+# Berguna terutama selama EMAIL_BACKEND belum diset ke SMTP asli
+# (masih console backend) — admin bisa lihat token di sini lalu bangun
+# link manual (/verify-email/<token>/ atau /reset-password/<token>/)
+# buat dikirim manual ke user kalau perlu, tanpa harus ngorek-ngorek log.
+@admin.register(AccountToken)
+class AccountTokenAdmin(admin.ModelAdmin):
+    list_display = ('user', 'token_type', 'token', 'used', 'created_at')
+    list_filter = ('token_type', 'used')
+    search_fields = ('user__username', 'user__email', 'token')
+    readonly_fields = ('token', 'created_at')
+    autocomplete_fields = ['user']

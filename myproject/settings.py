@@ -37,6 +37,33 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# ── EMAIL (untuk link verifikasi email & reset password) ─────────────
+# Default ke "console backend" — email gak dikirim sungguhan, isinya
+# cuma di-print ke console/log server (cukup buat development & testing,
+# link verifikasi/reset bisa dicopy manual dari log Railway).
+#
+# Buat PRODUCTION SUNGGUHAN, isi env var di bawah ini (misal pakai Gmail
+# App Password, atau SMTP provider lain seperti SendGrid/Mailtrap), nanti
+# otomatis pindah pakai SMTP backend asli:
+#   EMAIL_HOST=smtp.gmail.com
+#   EMAIL_PORT=587
+#   EMAIL_HOST_USER=emailkamu@gmail.com
+#   EMAIL_HOST_PASSWORD=<app password, BUKAN password biasa>
+#   EMAIL_USE_TLS=True
+if os.environ.get('EMAIL_HOST'):
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@lms-academy.local')
+
+# Dipakai buat bangun link absolut di email (https://domain.com/verify-email/<token>/)
+SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://localhost:8000')
+
 # CSRF_TRUSTED_ORIGINS — WAJIB diisi untuk hosting di belakang proxy HTTPS
 # (Railway, Render, dll). Tanpa ini, semua form POST (login admin, form
 # komentar, dst) akan ditolak 403 "CSRF verification failed" walau

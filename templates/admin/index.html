@@ -1,0 +1,94 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+{% if dashboard_stats %}
+<div class="lms-dashboard">
+  <div class="lms-stat-grid">
+    <div class="lms-stat-card">
+      <div class="lms-stat-icon">📚</div>
+      <div class="lms-stat-value">{{ dashboard_stats.total_courses }}</div>
+      <div class="lms-stat-label">Total Kursus</div>
+    </div>
+    <div class="lms-stat-card">
+      <div class="lms-stat-icon">👥</div>
+      <div class="lms-stat-value">{{ dashboard_stats.total_students }}</div>
+      <div class="lms-stat-label">Total User Terdaftar</div>
+    </div>
+    <div class="lms-stat-card">
+      <div class="lms-stat-icon">🧑‍🏫</div>
+      <div class="lms-stat-value">{{ dashboard_stats.total_teachers }}</div>
+      <div class="lms-stat-label">Total Pengajar</div>
+    </div>
+    <div class="lms-stat-card">
+      <div class="lms-stat-icon">✅</div>
+      <div class="lms-stat-value">{{ dashboard_stats.total_enrollments }}</div>
+      <div class="lms-stat-label">Enrollment Aktif (Paid)</div>
+      {% if dashboard_stats.pending_enrollments %}
+      <div class="lms-stat-sub">{{ dashboard_stats.pending_enrollments }} pending</div>
+      {% endif %}
+    </div>
+    <div class="lms-stat-card lms-stat-card-accent">
+      <div class="lms-stat-icon">💰</div>
+      <div class="lms-stat-value">Rp {{ dashboard_stats.revenue|floatformat:0 }}</div>
+      <div class="lms-stat-label">Estimasi Revenue</div>
+      <div class="lms-stat-sub">*kasar, belum ada payment gateway sungguhan</div>
+    </div>
+  </div>
+
+  {% if dashboard_stats.popular_courses %}
+  <div class="lms-popular-courses">
+    <h3>🔥 Kursus Paling Populer</h3>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Nama Kursus</th><th>Kategori</th><th>Jumlah Siswa (Paid)</th></tr>
+      </thead>
+      <tbody>
+        {% for course in dashboard_stats.popular_courses %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td><a href="{% url 'admin:tasks_course_change' course.id %}">{{ course.name }}</a></td>
+          <td>{{ course.category }}</td>
+          <td>{{ course.enrolled_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .lms-dashboard { margin-bottom: 28px; }
+  .lms-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .lms-stat-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .lms-stat-card-accent { background: #fffbeb; border-color: #fde68a; }
+  .lms-stat-icon { font-size: 1.4rem; margin-bottom: 6px; }
+  .lms-stat-value { font-size: 1.6rem; font-weight: 800; color: #0a0f2c; line-height: 1.1; }
+  .lms-stat-label { font-size: 0.78rem; color: #64748b; font-weight: 600; margin-top: 4px; }
+  .lms-stat-sub { font-size: 0.68rem; color: #94a3b8; margin-top: 2px; }
+  .lms-popular-courses {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .lms-popular-courses h3 { font-size: 0.95rem; margin: 0 0 12px; }
+  .lms-popular-courses table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .lms-popular-courses th { text-align: left; color: #64748b; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+  .lms-popular-courses td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
+</style>
+{% endif %}
+
+{{ block.super }}
+{% endblock %}

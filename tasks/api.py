@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
+from django.db.models import Min, Q
 from tasks.models import User, Course, CourseContent, Comment, Enrollment, CourseMember
 
 # ─────────────────────────────────────────────
@@ -302,10 +303,16 @@ def delete_course(request, course_id: int):
 # ─────────────────────────────────────────────
 # 👤 USER, CONTENT, & COMMENT ENDPOINTS
 # ─────────────────────────────────────────────
-@api.get("/users", tags=["Users"], response=List[UserOut])
-def list_users(request): return list(User.objects.all())
+@api.get("/users", tags=["Users"], response=List[UserOut], auth=GlobalAuth())
+def list_users(request):
+    """
+    Sebelumnya endpoint ini publik tanpa auth — siapapun tanpa akun bisa
+    ambil daftar SEMUA user terdaftar lengkap dengan emailnya (PII leak,
+    rawan disalahgunakan buat spam/phishing). Sekarang wajib login dulu.
+    """
+    return list(User.objects.all())
 
-@api.get("/users/{user_id}", tags=["Users"], response=UserOut)
+@api.get("/users/{user_id}", tags=["Users"], response=UserOut, auth=GlobalAuth())
 def get_user(request, user_id: int): return get_object_or_404(User, id=user_id)
 
 @api.delete("/users/{user_id}", tags=["Users"], auth=GlobalAuth())
@@ -313,8 +320,35 @@ def delete_user(request, user_id: int):
     get_object_or_404(User, id=user_id).delete()
     return {"success": True}
 
-@api.get("/contents", tags=["Contents"], response=List[CourseContentOut])
-def list_contents(request): return list(CourseContent.objects.all())
+@api.get("/contents", tags=["Contents"], response=List[CourseContentOut], auth=GlobalAuth())
+def list_contents(request):
+    """
+    PERBAIKAN PENTING: endpoint ini SEBELUMNYA publik TANPA AUTH SAMA
+    SEKALI dan mengembalikan `video_url` LENGKAP untuk SEMUA materi di
+    SEMUA course — termasuk yang berbayar. Ini membuat seluruh proteksi
+    enrollment & "preview gratis materi pertama" yang sudah dibangun di
+    sisi web (lihat tasks/views.py) jadi sia-sia, karena siapapun (tanpa
+    akun sekalipun) bisa mencuri semua link video lewat endpoint API ini.
+
+    Sekarang: wajib login (JWT), dan hasilnya difilter mengikuti aturan
+    akses yang SAMA dengan web — materi dari course yang sudah di-enroll
+    (status 'paid') ditampilkan penuh, materi dari course yang BELUM
+    di-enroll cuma yang materi pertamanya (preview gratis) yang ikut.
+    """
+    student_id = request.user.user_id
+    enrolled_course_ids = set(
+        Enrollment.objects.filter(student_id=student_id, status='paid').values_list('course_id', flat=True)
+    )
+    first_content_ids = set(
+        CourseContent.objects.values('course_id')
+        .annotate(first_id=Min('id'))
+        .values_list('first_id', flat=True)
+    )
+    return list(
+        CourseContent.objects.filter(
+            Q(course_id__in=enrolled_course_ids) | Q(id__in=first_content_ids)
+        )
+    )
 
 @api.post("/contents", tags=["Contents"], response=CourseContentOut, auth=GlobalAuth())
 def create_content(request, payload: CourseContentIn):
@@ -365,8 +399,13 @@ class EnrollmentIn(Schema):
     course_id: int
     status: Optional[str] = "pending"
 
-@api.get("/enrollments", tags=["Enrollments"], response=List[EnrollmentOut])
+@api.get("/enrollments", tags=["Enrollments"], response=List[EnrollmentOut], auth=GlobalAuth())
 def list_enrollments(request, course_id: Optional[int] = None):
+    """
+    Sebelumnya publik tanpa auth — siapapun bisa lihat siapa terdaftar
+    di kursus apa (data privasi siswa) tanpa perlu login. Sekarang wajib
+    login dulu.
+    """
     queryset = Enrollment.objects.all()
     if course_id is not None:
         queryset = queryset.filter(course_id=course_id)
@@ -437,8 +476,9 @@ class CourseMemberIn(Schema):
     user_id: int
     roles: str = "std"
 
-@api.get("/course-members", tags=["Course Members"], response=List[CourseMemberOut])
+@api.get("/course-members", tags=["Course Members"], response=List[CourseMemberOut], auth=GlobalAuth())
 def list_course_members(request, course_id: Optional[int] = None):
+    """Sebelumnya publik tanpa auth — sekarang wajib login dulu."""
     queryset = CourseMember.objects.all()
     if course_id is not None:
         queryset = queryset.filter(course_id=course_id)
