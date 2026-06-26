@@ -2,12 +2,15 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.views.static import serve as static_serve
+from tasks.views import robots_txt, sitemap_xml
 # Pastikan kedua instance diimport jika posisinya terpisah
 from tasks.api import api as api_v1  # Mengarah ke engine lama / Pertemuan 10
 # dari tasks.api_v2 import api as api_v2 # <- Aktifkan & sesuaikan baris ini jika file API v2 kamu dipisah
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('robots.txt', robots_txt, name='robots_txt'),
+    path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
     path('', include('tasks.urls')),                           # Menangani halaman Beranda langsung (localhost:8000)
     path('silk/', include('silk.urls', namespace='silk')),     # Menangani Silk Profiler
 

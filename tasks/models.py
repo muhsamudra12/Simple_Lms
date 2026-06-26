@@ -40,6 +40,11 @@ class CourseContent(models.Model):
     video_url = models.URLField(help_text="Masukkan link embed YouTube")
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='contents')  # Relasi ke Course
     description = models.TextField(null=True, blank=True)
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Urutan Tampil",
+        help_text="Angka lebih kecil tampil lebih dulu. Materi dengan urutan sama diurutkan berdasarkan kapan dibuat.",
+    )
     duration_seconds = models.PositiveIntegerField(
         null=True, blank=True,
         verbose_name="Durasi Video (detik)",
@@ -59,7 +64,7 @@ class CourseContent(models.Model):
         # gratis": tanpa urutan pasti, materi mana yang jadi gratis bisa
         # berubah-ubah tiap kali halaman dibuka. Diurutkan oleh `id`
         # (urutan dibuat) supaya konsisten.
-        ordering = ['id']
+        ordering = ['order', 'id']
 
     def __str__(self):
         # Sebelumnya model ini TIDAK punya __str__ sama sekali, jadi Django

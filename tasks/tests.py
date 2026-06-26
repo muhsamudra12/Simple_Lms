@@ -437,6 +437,28 @@ class CertificateTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp['Content-Type'], 'application/pdf')
 
+    def test_certificate_still_issued_via_my_courses_page(self):
+        """
+        Regression test: sebelumnya sertifikat HANYA ke-generate lewat
+        halaman detail course. Kalau user menyelesaikan materi terakhir
+        lalu langsung ke halaman 'Kursus Saya' (tanpa follow redirect
+        balik ke detail), sertifikat tidak pernah benar-benar dibuat
+        walau halaman itu menampilkan course sebagai 100% selesai.
+        """
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id})  # TANPA follow
+        self.assertFalse(Certificate.objects.filter(user=self.student, course=self.course).exists())
+
+        self.client.get('/kursus-saya/')
+        self.assertTrue(Certificate.objects.filter(user=self.student, course=self.course).exists())
+
+    def test_certificate_still_issued_via_homepage(self):
+        """Regression test yang sama, tapi lewat homepage (bukan 'Kursus Saya')."""
+        self.client.post(f'/course/{self.course.id}/', {'toggle_content': '1', 'content_id': self.content.id})  # TANPA follow
+        self.assertFalse(Certificate.objects.filter(user=self.student, course=self.course).exists())
+
+        self.client.get('/')
+        self.assertTrue(Certificate.objects.filter(user=self.student, course=self.course).exists())
+
 
 # ═════════════════════════════════════════════════════════════
 # ✉️ VERIFIKASI EMAIL & LUPA PASSWORD

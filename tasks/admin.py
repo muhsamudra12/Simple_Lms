@@ -109,7 +109,30 @@ class UserAdmin(ImportExportModelAdmin):
 class CourseContentInline(admin.TabularInline):
     model = CourseContent
     extra = 1
-    fields = ('name', 'video_url', 'duration_seconds', 'description')
+    fields = ('order', 'name', 'video_url', 'duration_seconds', 'description')
+    ordering = ['order', 'id']
+
+
+# ── Enrollment (Inline read-only di dalam Course) ───────────
+# Sebelumnya admin harus pindah ke menu "Enrollments" terpisah dan
+# filter manual buat lihat siapa aja yang sudah ambil kursus tertentu.
+# Sengaja DIBUAT READ-ONLY (gak bisa tambah/hapus/edit dari sini) supaya
+# pengelolaan beneran tetap lewat menu Enrollments (yang sudah ada
+# validasi kuota dkk) — inline ini cuma buat "lihat sekilas", bukan ganti
+# fungsi menu aslinya.
+class EnrollmentInline(admin.TabularInline):
+    model = Enrollment
+    extra = 0
+    fields = ('student', 'status')
+    readonly_fields = ('student', 'status')
+    verbose_name = "Peserta Terdaftar"
+    verbose_name_plural = "Peserta Terdaftar (read-only — kelola lewat menu Enrollments)"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 # ── Course ────────────────────────────────────────────────
@@ -118,13 +141,16 @@ class CourseAdmin(ImportExportModelAdmin):
     list_display = ('name', 'teacher', 'category', 'price', 'max_students')
     list_filter = ('category',)
     search_fields = ('name', 'description')
-    inlines = [CourseContentInline]
+    inlines = [CourseContentInline, EnrollmentInline]
 
 
 # ── CourseContent ─────────────────────────────────────────
 @admin.register(CourseContent)
 class CourseContentAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'course', 'duration_seconds')
+    list_display = ('name', 'order', 'course', 'duration_seconds')
+    list_display_links = ('name',)
+    list_editable = ('order',)
+    list_filter = ('course',)
     search_fields = ('name',)
 
 

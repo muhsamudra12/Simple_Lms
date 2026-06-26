@@ -52,6 +52,35 @@ def _build_preview_url(video_url, duration_seconds):
     return f"{video_url}{sep}start=0&end={preview_seconds}", preview_seconds
 
 
+def robots_txt(request):
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin/",
+        "Disallow: /silk/",
+        "Disallow: /kursus-saya/",
+        "Disallow: /profile/",
+        "Disallow: /reset-password/",
+        "Disallow: /verify-email/",
+        f"Sitemap: {request.build_absolute_uri('/sitemap.xml')}",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain")
+
+
+def sitemap_xml(request):
+    # Sengaja bikin manual ringan (bukan pakai django.contrib.sitemaps)
+    # supaya gak perlu nambah app baru di INSTALLED_APPS cuma buat ini —
+    # isinya cuma homepage + semua halaman detail course (yang memang
+    # ditujukan buat publik/guest, sesuai desain preview yang sudah ada).
+    urls = [request.build_absolute_uri('/')]
+    for course in Course.objects.order_by('-id').values_list('id', flat=True):
+        urls.append(request.build_absolute_uri(f'/course/{course}/'))
+
+    xml_items = "".join(f"<url><loc>{u}</loc></url>" for u in urls)
+    xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{xml_items}</urlset>'
+    return HttpResponse(xml, content_type="application/xml")
+
+
 def index(request):
     query = request.GET.get('q')
     category_filter = request.GET.get('category', '').strip()
@@ -150,6 +179,13 @@ def index(request):
                 user_id=user_id, content_id__in=content_ids_in_course
             ).count()
             c.progress_pct = int(done / total * 100)
+            # Sama seperti di my_courses_page(): jaring pengaman supaya
+            # sertifikat tetap ke-generate walau user nyelesain materi
+            # terakhir lalu cuma balik ke homepage (gak pernah ke halaman
+            # detail course-nya lagi).
+            _, just_issued = _issue_certificate_if_complete(user_id, c, c.progress_pct, total)
+            if just_issued:
+                messages.success(request, f"🎉 Selamat! Kamu menyelesaikan kursus '{c.name}' dan sertifikatnya sudah siap diunduh!")
         else:
             c.progress_pct = 0
 
@@ -177,6 +213,26 @@ def index(request):
         'price_filter': price_filter,
         'is_filtered': bool(query or category_filter or price_filter),
     })
+
+
+def _issue_certificate_if_complete(user_id, course, progress_pct, total_content):
+    """
+    Helper bersama buat auto-issue sertifikat — SEBELUMNYA logic ini cuma
+    ada di dalam detail() view, jadi kalau user menyelesaikan materi
+    terakhir lalu TIDAK PERNAH balik lagi ke halaman detail course itu
+    (misal langsung ke halaman 'Kursus Saya'), sertifikatnya TIDAK PERNAH
+    benar-benar ke-generate di database — padahal halaman lain (My
+    Courses) sudah menampilkannya seolah-olah 100% selesai. Sekarang
+    logic-nya disatukan di sini, dipanggil dari KEDUA halaman.
+
+    Return (certificate, created) — `created=True` cuma kalau ini BENERAN
+    baru pertama kali ke-generate (dipakai buat nampilin pesan perayaan
+    sekali doang, bukan tiap kali halaman dibuka ulang).
+    """
+    is_complete = total_content > 0 and progress_pct == 100
+    if user_id and is_complete:
+        return Certificate.objects.get_or_create(user_id=user_id, course=course)
+    return None, False
 
 
 def detail(request, course_id):
@@ -291,7 +347,11 @@ def detail(request, course_id):
     # tapi dipanggil lagi di sini biar jelas & tidak bergantung diam-diam
     # ke Meta) — penting karena "materi pertama" dipakai sebagai preview
     # gratis di bawah, jadi urutannya harus konsisten.
-    contents = course.contents.all().order_by('id')
+    # Diurutkan pakai field `order` (admin bisa atur manual lewat Admin)
+    # dengan `id` sebagai tiebreaker kalau order-nya sama — penting karena
+    # "materi pertama" dipakai sebagai preview gratis di bawah, jadi
+    # urutannya harus konsisten & sesuai yang diatur admin.
+    contents = course.contents.all().order_by('order', 'id')
     first_content = contents.first()
     first_content_id = first_content.id if first_content else None
 
@@ -323,10 +383,10 @@ def detail(request, course_id):
     # disimpan permanen (get_or_create) supaya tanggal terbit & kode
     # verifikasinya tidak berubah-ubah tiap halaman ini dibuka ulang.
     certificate = None
-    if user_id and is_enrolled and is_course_complete:
-        certificate, _ = Certificate.objects.get_or_create(
-            user_id=user_id, course=course
-        )
+    if is_enrolled:
+        certificate, just_issued = _issue_certificate_if_complete(user_id, course, progress_pct, total)
+        if just_issued:
+            messages.success(request, f"🎉 Selamat! Kamu menyelesaikan kursus '{course.name}' dan sertifikatnya sudah siap diunduh!")
 
     # Sisa kuota — ditampilkan di tombol "Ambil Kursus" biar transparan
     # (sama persis logika yang dipakai Enrollment._check_capacity()).
@@ -674,6 +734,61 @@ def reset_password_page(request, token):
             return redirect('login_page')
 
     return render(request, 'tasks/reset_password.html', {'token': token})
+
+
+def my_courses_page(request):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        messages.error(request, "Silakan login dulu untuk melihat kursus kamu.")
+        return redirect('login_page')
+
+    # Sebelumnya TIDAK ADA halaman buat lihat "kursus yang sudah saya
+    # ambil" dalam satu tempat — user harus scroll-scroll homepage nyariin
+    # kartu yang tombolnya "Buka Kursus". Halaman ini gabungin dashboard
+    # kursus + sertifikat yang sudah didapat, mirip "My Learning" di
+    # Udemy/Coursera.
+    enrollments = (
+        Enrollment.objects.filter(student_id=user_id, status='paid')
+        .select_related('course', 'course__teacher')
+        .prefetch_related('course__contents')
+        .order_by('-id')
+    )
+
+    # Ambil SEMUA content_id yang sudah ditandai selesai oleh user ini
+    # lewat SATU query, supaya tidak query berulang per-course (N+1) —
+    # pola yang sama dipakai buat fix performa di homepage sebelumnya.
+    done_content_ids = set(
+        ContentProgress.objects.filter(user_id=user_id).values_list('content_id', flat=True)
+    )
+
+    enrolled_courses = []
+    for enrollment in enrollments:
+        course = enrollment.course
+        all_contents = course.contents.all()  # sudah dari cache prefetch
+        total = len(all_contents)
+        done = sum(1 for c in all_contents if c.id in done_content_ids)
+        course.progress_pct = int(done / total * 100) if total > 0 else 0
+        course.total_content = total
+        course.is_course_complete = total > 0 and course.progress_pct == 100
+        # Lihat docstring _issue_certificate_if_complete: ini jaring
+        # pengaman supaya sertifikat tetap ke-generate walau user gak
+        # pernah balik ke halaman detail course-nya lagi setelah
+        # menyelesaikan materi terakhir.
+        _, just_issued = _issue_certificate_if_complete(user_id, course, course.progress_pct, total)
+        if just_issued:
+            messages.success(request, f"🎉 Selamat! Kamu menyelesaikan kursus '{course.name}' dan sertifikatnya sudah siap diunduh!")
+        enrolled_courses.append(course)
+
+    certificates = (
+        Certificate.objects.filter(user_id=user_id)
+        .select_related('course')
+        .order_by('-issued_at')
+    )
+
+    return render(request, 'tasks/my_courses.html', {
+        'enrolled_courses': enrolled_courses,
+        'certificates': certificates,
+    })
 
 
 def profile_page(request):

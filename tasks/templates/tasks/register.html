@@ -197,6 +197,22 @@
           icon.className = 'bi bi-eye-fill';
         }
       }
+    
+      // Auto-dismiss notifikasi (login/logout/dll) setelah beberapa detik
+      // — sebelumnya pesan flash cuma hilang kalau user pindah halaman
+      // atau refresh manual, jadi numpuk/ketinggalan di layar terus.
+      document.querySelectorAll('.alert-custom').forEach(function (alertEl, i) {
+        setTimeout(function () {
+          alertEl.style.transition = 'opacity 0.4s ease, max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease';
+          alertEl.style.opacity = '0';
+          alertEl.style.maxHeight = '0';
+          alertEl.style.overflow = 'hidden';
+          alertEl.style.marginBottom = '0';
+          alertEl.style.paddingTop = '0';
+          alertEl.style.paddingBottom = '0';
+          setTimeout(function () { alertEl.remove(); }, 400);
+        }, 4000 + i * 300);
+      });
     </script>
   </body>
 </html>
