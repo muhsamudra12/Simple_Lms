@@ -592,8 +592,10 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto align-items-center gap-1">
             <li class="nav-item"><a class="nav-link active" href="/"><i class="bi bi-house me-1"></i>Beranda</a></li>
+            {% if user.is_staff %}
             <li class="nav-item"><a class="nav-link text-info" href="{% url 'stats' %}"><i class="bi bi-bar-chart me-1"></i>Statistik</a></li>
             <li class="nav-item"><a class="nav-link text-success" href="/silk/" target="_blank"><i class="bi bi-cpu me-1"></i>Silk</a></li>
+            {% endif %}
             <li class="nav-item"><a class="nav-link text-warning" href="/api/v1/docs" target="_blank"><i class="bi bi-code-slash me-1"></i>Swagger Docs</a></li>
             {% if logged_in_user %}
               <li class="nav-item ms-2"><a href="{% url 'profile_page' %}" class="nav-link text-light"><i class="bi bi-person-circle me-1"></i>{{ logged_in_user.fullname }}</a></li>

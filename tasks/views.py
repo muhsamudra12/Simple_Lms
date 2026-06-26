@@ -361,13 +361,16 @@ def detail(request, course_id):
 
 
 def stats_view(request):
-    # Statistik harga kursus sengaja dibatasi cuma untuk user yang sudah
-    # login — pengunjung baru/belum daftar tidak diarahkan lihat data ini
-    # duluan (supaya angka mentah tidak jadi alasan ragu sebelum sempat
-    # eksplorasi konten kursusnya).
-    if not request.session.get('user_id'):
-        messages.error(request, "Silakan login dulu untuk melihat statistik kursus.")
-        return redirect('login_page')
+    # PERBAIKAN: sebelumnya halaman ini cuma syaratnya "sudah login" di
+    # WEBSITE (session LMS biasa) — padahal isinya statistik internal
+    # (rata-rata harga semua kursus, ranking semua kursus) yang sebetulnya
+    # lebih cocok buat admin, bukan student biasa. Sekarang disamakan
+    # dengan cara Silk diproteksi: wajib login sebagai STAFF Django
+    # (`request.user.is_staff` — sistem auth Django bawaan, BEDA dengan
+    # session LMS kita), bukan cuma "user yang sudah login di LMS".
+    if not (request.user.is_authenticated and request.user.is_staff):
+        messages.error(request, "Halaman ini cuma untuk admin.")
+        return redirect(f"/admin/login/?next={request.path}")
 
     stats = Course.objects.aggregate(
         total_course=Count('id'),

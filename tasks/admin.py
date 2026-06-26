@@ -200,3 +200,23 @@ class AccountTokenAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'token')
     readonly_fields = ('token', 'created_at')
     autocomplete_fields = ['user']
+
+    def save_model(self, request, obj, form, change):
+        # Sebelumnya: nge-centang "used" manual di sini CUMA mengubah field
+        # `used` doang — TIDAK benar-benar memverifikasi email user (beda
+        # dengan kalau user klik link aslinya, yang sekaligus set
+        # `user.is_verified = True`). Ini bikin bingung: admin centang
+        # "used", tapi user tetap gak bisa login karena dianggap "belum
+        # diverifikasi". Sekarang disamakan behaviour-nya: centang "used"
+        # pada token verifikasi email = otomatis verifikasi user-nya juga,
+        # sama seperti efek mengklik link verifikasi yang sesungguhnya.
+        was_used_before = False
+        if change and obj.pk:
+            was_used_before = AccountToken.objects.filter(pk=obj.pk, used=True).exists()
+
+        super().save_model(request, obj, form, change)
+
+        if obj.token_type == 'verify_email' and obj.used and not was_used_before:
+            obj.user.is_verified = True
+            obj.user.save()
+            self.message_user(request, f"Email milik '{obj.user.username}' otomatis ikut diverifikasi.")
