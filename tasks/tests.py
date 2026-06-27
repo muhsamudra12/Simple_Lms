@@ -231,14 +231,153 @@ class CourseApiAuthTest(TestCase):
             "username": "course_api_user", "password": "rahasia123"
         })
         token = login.json()["token"]
+        new_user = User.objects.get(username="course_api_user")
 
+        # PENTING: teacher_id WAJIB diri sendiri sekarang (lihat
+        # perbaikan keamanan di api.py create_course) — sebelumnya test
+        # ini pakai `self.teacher.id` (user LAIN), yang justru jadi
+        # contoh nyata celah "siapa saja bisa bikin course atas nama
+        # guru manapun" sebelum diperbaiki.
         r = client.post(
             "/courses",
-            json={"name": "Kursus Dengan Auth", "description": "desc", "price": 10000, "teacher_id": self.teacher.id},
+            json={"name": "Kursus Dengan Auth", "description": "desc", "price": 10000, "teacher_id": new_user.id},
             headers={"Authorization": f"Bearer {token}"}
         )
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["name"], "Kursus Dengan Auth")
+
+    def test_cannot_create_course_impersonating_another_teacher(self):
+        """
+        Regression test buat celah keamanan yang sempat ketemu: user yang
+        login TIDAK BOLEH bikin course dengan `teacher_id` milik user
+        LAIN (impersonasi guru). Harus ditolak 403.
+        """
+        client.post("/auth/register", json={
+            "username": "course_api_impersonator", "fullname": "Impersonator",
+            "email": "imp@mail.com", "password": "rahasia123"
+        })
+        login = client.post("/auth/login", json={
+            "username": "course_api_impersonator", "password": "rahasia123"
+        })
+        token = login.json()["token"]
+
+        r = client.post(
+            "/courses",
+            json={"name": "Kursus Curian", "description": "desc", "price": 10000, "teacher_id": self.teacher.id},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        self.assertEqual(r.status_code, 403)
+        self.assertFalse(Course.objects.filter(name="Kursus Curian").exists())
+
+    def test_cannot_update_or_delete_course_of_another_teacher(self):
+        """Regression test: user yang login tidak boleh ubah/hapus course milik guru lain."""
+        course = Course.objects.create(
+            name="Course Milik Guru Lain", description="d", price=10000,
+            teacher=self.teacher, max_students=10,
+        )
+        client.post("/auth/register", json={
+            "username": "course_api_intruder", "fullname": "Intruder",
+            "email": "intruder@mail.com", "password": "rahasia123"
+        })
+        login = client.post("/auth/login", json={
+            "username": "course_api_intruder", "password": "rahasia123"
+        })
+        token = login.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        r1 = client.put(f"/courses/{course.id}", json={"price": 1}, headers=headers)
+        self.assertEqual(r1.status_code, 403)
+
+        r2 = client.delete(f"/courses/{course.id}", headers=headers)
+        self.assertEqual(r2.status_code, 403)
+        self.assertTrue(Course.objects.filter(id=course.id).exists())
+
+    def test_cannot_delete_another_users_account(self):
+        """
+        Regression test buat celah keamanan PALING KRITIS yang ketemu:
+        user yang login tidak boleh menghapus akun user LAIN (apalagi
+        akun guru, yang lewat CASCADE bisa menghapus semua course-nya).
+        """
+        client.post("/auth/register", json={
+            "username": "delete_user_attacker", "fullname": "Attacker",
+            "email": "attacker@mail.com", "password": "rahasia123"
+        })
+        login = client.post("/auth/login", json={
+            "username": "delete_user_attacker", "password": "rahasia123"
+        })
+        token = login.json()["token"]
+
+        r = client.delete(f"/users/{self.teacher.id}", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(User.objects.filter(id=self.teacher.id).exists())
+
+    def test_cannot_manage_content_of_another_teachers_course(self):
+        """Regression test: tambah/hapus materi cuma boleh oleh pengajar course-nya sendiri."""
+        course = Course.objects.create(
+            name="Course Guru Lain Untuk Content", description="d", price=10000,
+            teacher=self.teacher, max_students=10,
+        )
+        content = CourseContent.objects.create(name="Materi Asli", video_url="https://www.youtube.com/embed/x", course=course)
+
+        client.post("/auth/register", json={
+            "username": "content_intruder", "fullname": "Intruder",
+            "email": "ci@mail.com", "password": "rahasia123"
+        })
+        login = client.post("/auth/login", json={"username": "content_intruder", "password": "rahasia123"})
+        headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        r1 = client.post("/contents", json={
+            "name": "Materi Nyelip", "video_url": "https://www.youtube.com/embed/y", "course_id": course.id,
+        }, headers=headers)
+        self.assertEqual(r1.status_code, 403)
+
+        r2 = client.delete(f"/contents/{content.id}", headers=headers)
+        self.assertEqual(r2.status_code, 403)
+        self.assertTrue(CourseContent.objects.filter(id=content.id).exists())
+
+    def test_cannot_moderate_comment_of_another_teachers_course(self):
+        """Regression test: hapus komentar cuma boleh oleh pengajar course yang dikomentari."""
+        course = Course.objects.create(
+            name="Course Guru Lain Untuk Comment", description="d", price=10000,
+            teacher=self.teacher, max_students=10,
+        )
+        comment = Comment.objects.create(course=course, nama_komentator="Penonton", isi_komentar="Mantap", rating=5)
+
+        client.post("/auth/register", json={
+            "username": "comment_intruder", "fullname": "Intruder",
+            "email": "coi@mail.com", "password": "rahasia123"
+        })
+        login = client.post("/auth/login", json={"username": "comment_intruder", "password": "rahasia123"})
+        headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        r = client.delete(f"/comments/{comment.id}", headers=headers)
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(Comment.objects.filter(id=comment.id).exists())
+
+    def test_cannot_manage_course_members_of_another_teachers_course(self):
+        """Regression test: tambah/hapus course-member cuma boleh oleh pengajar course-nya sendiri."""
+        course = Course.objects.create(
+            name="Course Guru Lain Untuk Member", description="d", price=10000,
+            teacher=self.teacher, max_students=10,
+        )
+        member = CourseMember.objects.create(course_id=course, user_id=self.teacher, roles="std")
+
+        client.post("/auth/register", json={
+            "username": "member_intruder", "fullname": "Intruder",
+            "email": "memi@mail.com", "password": "rahasia123"
+        })
+        login = client.post("/auth/login", json={"username": "member_intruder", "password": "rahasia123"})
+        headers = {"Authorization": f"Bearer {login.json()['token']}"}
+        intruder = User.objects.get(username="member_intruder")
+
+        r1 = client.post("/course-members", json={
+            "course_id": course.id, "user_id": intruder.id, "roles": "std",
+        }, headers=headers)
+        self.assertEqual(r1.status_code, 403)
+
+        r2 = client.delete(f"/course-members/{member.id}", headers=headers)
+        self.assertEqual(r2.status_code, 403)
+        self.assertTrue(CourseMember.objects.filter(id=member.id).exists())
 
 
 class CalculatorApiTest(TestCase):

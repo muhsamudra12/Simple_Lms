@@ -82,6 +82,7 @@ class LoginInput(Schema):
 class AuthOutput(Schema):
     message: str
     token: str = None
+    user_id: int = None
 
 @api.post("/auth/register", tags=["Authentication"], response={201: AuthOutput, 400: AuthOutput})
 @simple_throttle(rate_limit=5, period=60)
@@ -105,7 +106,7 @@ def login_user(request, data: LoginInput):
     if user is None or not check_password(data.password, user.password):
         return 401, {"message": "Username atau password salah!"}
     access_token, _ = get_access_token_for_user(user)
-    return 200, {"message": "Login sukses!", "token": access_token}
+    return 200, {"message": "Login sukses!", "token": access_token, "user_id": user.id}
 
 
 # ─────────────────────────────────────────────
@@ -281,6 +282,16 @@ def get_course(request, course_id: int): return get_object_or_404(Course, id=cou
 
 @api.post("/courses", tags=["Courses"], response=CourseOut, auth=GlobalAuth())
 def create_course(request, payload: CourseIn):
+    """
+    PERBAIKAN PENTING: sebelumnya endpoint ini cuma butuh login (siapa
+    saja), TANPA cek apakah `teacher_id` di payload itu beneran dirinya
+    sendiri — siswa baru daftar bisa bikin course dan "mengklaim" guru
+    lain (atau user manapun) sebagai pengajarnya tanpa izin. Sekarang
+    wajib `teacher_id == diri sendiri` (kamu cuma bisa bikin course buat
+    dirimu sendiri, gak bisa atas nama orang lain).
+    """
+    if payload.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu cuma bisa membuat course dengan teacher_id = dirimu sendiri.")
     teacher = get_object_or_404(User, id=payload.teacher_id)
     return Course.objects.create(
         name=payload.name, description=payload.description, price=payload.price,
@@ -290,7 +301,15 @@ def create_course(request, payload: CourseIn):
 
 @api.put("/courses/{course_id}", tags=["Courses"], response=CourseOut, auth=GlobalAuth())
 def update_course(request, course_id: int, payload: CourseUpdate):
+    """
+    PERBAIKAN PENTING: sebelumnya SIAPAPUN yang login (termasuk siswa)
+    bisa mengubah course MANAPUN — ganti harga, ganti nama, bahkan
+    "mencuri" course dengan ganti teacher_id ke dirinya sendiri. Sekarang
+    wajib jadi pengajar course itu sendiri.
+    """
     course = get_object_or_404(Course, id=course_id)
+    if course.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu bukan pengajar course ini, tidak bisa mengubahnya.")
     for attr, value in payload.dict(exclude_none=True).items():
         if attr == "teacher_id": course.teacher = get_object_or_404(User, id=value)
         else: setattr(course, attr, value)
@@ -299,7 +318,16 @@ def update_course(request, course_id: int, payload: CourseUpdate):
 
 @api.delete("/courses/{course_id}", tags=["Courses"], auth=GlobalAuth())
 def delete_course(request, course_id: int):
-    get_object_or_404(Course, id=course_id).delete()
+    """
+    PERBAIKAN PENTING (paling parah dari semua celah serupa): sebelumnya
+    SIAPAPUN yang login bisa hapus course MANAPUN, padahal course
+    biasanya sudah punya enrollment/comment/certificate beneran yang
+    ikut lenyap. Sekarang wajib jadi pengajar course itu sendiri.
+    """
+    course = get_object_or_404(Course, id=course_id)
+    if course.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu bukan pengajar course ini, tidak bisa menghapusnya.")
+    course.delete()
     return {"success": True, "message": f"Course {course_id} berhasil dihapus"}
 
 
@@ -320,6 +348,20 @@ def get_user(request, user_id: int): return get_object_or_404(User, id=user_id)
 
 @api.delete("/users/{user_id}", tags=["Users"], auth=GlobalAuth())
 def delete_user(request, user_id: int):
+    """
+    PERBAIKAN PALING KRITIS dari semua celah otorisasi yang ditemukan:
+    sebelumnya SIAPAPUN yang login (termasuk siswa baru daftar sendiri)
+    bisa hapus akun USER MANAPUN lewat endpoint ini — termasuk akun guru.
+    Karena `Course.teacher` pakai `on_delete=CASCADE`, menghapus satu
+    akun guru otomatis ikut menghapus SEMUA course yang dia ajar, beserta
+    semua enrollment/comment/certificate yang menempel di course-course
+    itu. Satu akun siswa bisa meruntuhkan seluruh platform.
+
+    Sekarang dibatasi: SIAPAPUN cuma boleh hapus akunnya SENDIRI (self
+    -service account deletion), bukan akun orang lain.
+    """
+    if user_id != request.user.user_id:
+        raise HttpError(403, "Kamu cuma bisa menghapus akunmu sendiri.")
     get_object_or_404(User, id=user_id).delete()
     return {"success": True}
 
@@ -355,7 +397,14 @@ def list_contents(request):
 
 @api.post("/contents", tags=["Contents"], response=CourseContentOut, auth=GlobalAuth())
 def create_content(request, payload: CourseContentIn):
+    """
+    PERBAIKAN: sebelumnya siapapun yang login bisa nambahin materi ke
+    course MANAPUN, termasuk course yang bukan dia ajar. Sekarang wajib
+    jadi pengajar course tujuan.
+    """
     course = get_object_or_404(Course, id=payload.course_id)
+    if course.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu bukan pengajar course ini, tidak bisa menambah materi.")
     return CourseContent.objects.create(
         name=payload.name, video_url=payload.video_url, description=payload.description,
         duration_seconds=payload.duration_seconds, course=course,
@@ -363,7 +412,11 @@ def create_content(request, payload: CourseContentIn):
 
 @api.delete("/contents/{content_id}", tags=["Contents"], auth=GlobalAuth())
 def delete_content(request, content_id: int):
-    get_object_or_404(CourseContent, id=content_id).delete()
+    """PERBAIKAN: sama seperti create_content — wajib jadi pengajar course-nya."""
+    content = get_object_or_404(CourseContent, id=content_id)
+    if content.course.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu bukan pengajar course ini, tidak bisa menghapus materinya.")
+    content.delete()
     return {"success": True, "message": f"Materi {content_id} berhasil dihapus"}
 
 @api.get("/comments", tags=["Comments"], response=List[CommentOut])
@@ -381,8 +434,16 @@ def create_comment(request, payload: CommentIn):
 
 @api.delete("/comments/{comment_id}", tags=["Comments"], auth=GlobalAuth())
 def delete_comment(request, comment_id: int):
-    """Moderasi — hapus komentar (misal spam atau tidak pantas). Butuh auth."""
-    get_object_or_404(Comment, id=comment_id).delete()
+    """
+    Moderasi — hapus komentar (misal spam atau tidak pantas). PERBAIKAN:
+    sebelumnya siapapun yang login bisa hapus komentar di course MANAPUN.
+    Sekarang dibatasi ke pengajar course yang komentarnya mau dihapus
+    (moderasi cuma boleh oleh "pemilik" course itu).
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    if comment.course.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu bukan pengajar course ini, tidak bisa moderasi komentarnya.")
+    comment.delete()
     return {"success": True, "message": f"Komentar {comment_id} berhasil dihapus"}
 
 
@@ -489,11 +550,18 @@ def list_course_members(request, course_id: Optional[int] = None):
 
 @api.post("/course-members", tags=["Course Members"], response=CourseMemberOut, auth=GlobalAuth())
 def create_course_member(request, payload: CourseMemberIn):
+    """PERBAIKAN: sebelumnya siapapun yang login bisa nambahin member ke course MANAPUN. Sekarang wajib pengajar course tujuan."""
     course = get_object_or_404(Course, id=payload.course_id)
+    if course.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu bukan pengajar course ini, tidak bisa menambah member.")
     user = get_object_or_404(User, id=payload.user_id)
     return CourseMember.objects.create(course_id=course, user_id=user, roles=payload.roles)
 
 @api.delete("/course-members/{member_id}", tags=["Course Members"], auth=GlobalAuth())
 def delete_course_member(request, member_id: int):
-    get_object_or_404(CourseMember, id=member_id).delete()
+    """PERBAIKAN: sama seperti create_course_member — wajib pengajar course-nya."""
+    member = get_object_or_404(CourseMember, id=member_id)
+    if member.course_id.teacher_id != request.user.user_id:
+        raise HttpError(403, "Kamu bukan pengajar course ini, tidak bisa menghapus membernya.")
+    member.delete()
     return {"success": True, "message": f"Course member {member_id} berhasil dihapus"}

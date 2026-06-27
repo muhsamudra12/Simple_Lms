@@ -30,6 +30,16 @@
 			"key": "sample_student_id",
 			"value": "2",
 			"type": "string"
+		},
+		{
+			"key": "my_user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "my_course_id",
+			"value": "",
+			"type": "string"
 		}
 	],
 	"item": [
@@ -74,7 +84,8 @@
 									"if (pm.response.code === 200) {",
 									"    const data = pm.response.json();",
 									"    pm.collectionVariables.set('jwt_token', data.token);",
-									"    console.log('JWT token tersimpan ke variable jwt_token');",
+									"    pm.collectionVariables.set('my_user_id', data.user_id);",
+									"    console.log('JWT token & user_id tersimpan (my_user_id =', data.user_id, ')');",
 									"} else {",
 									"    console.log('Login gagal, token tidak diupdate');",
 									"}"
@@ -196,7 +207,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Kursus dari Postman\",\n  \"description\": \"Dibuat lewat Postman buat testing\",\n  \"price\": 99000,\n  \"image_url\": \"https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=600\",\n  \"category\": \"Testing\",\n  \"teacher_id\": {{sample_teacher_id}}\n}"
+							"raw": "{\n  \"name\": \"Kursus dari Postman\",\n  \"description\": \"Dibuat lewat Postman buat testing\",\n  \"price\": 99000,\n  \"image_url\": \"https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=600\",\n  \"category\": \"Testing\",\n  \"teacher_id\": {{my_user_id}}\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/courses",
@@ -209,7 +220,22 @@
 						},
 						"description": "Jalankan request 'Login' dulu sebelum ini supaya {{jwt_token}} terisi. Tanpa token, ini akan ditolak 401."
 					},
-					"response": []
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const data = pm.response.json();",
+									"    pm.collectionVariables.set('my_course_id', data.id);",
+									"    console.log('Course baru tersimpan ke variable my_course_id =', data.id);",
+									"}"
+								]
+							}
+						}
+					]
 				},
 				{
 					"name": "Update Course (butuh token)",
@@ -235,7 +261,7 @@
 							"raw": "{\n  \"price\": 75000\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/courses/{{sample_course_id}}",
+							"raw": "{{base_url}}/courses/{{my_course_id}}",
 							"host": [
 								"{{base_url}}"
 							],
@@ -262,7 +288,7 @@
 							]
 						},
 						"url": {
-							"raw": "{{base_url}}/courses/{{sample_course_id}}",
+							"raw": "{{base_url}}/courses/{{my_course_id}}",
 							"host": [
 								"{{base_url}}"
 							],

@@ -59,9 +59,21 @@ Collection ini pakai beberapa **variable** (`sample_teacher_id`, `sample_course_
 1. **Tanpa login dulu**, coba langsung jalankan **"Create Course (butuh token)"** di folder Courses.
    - Harus ditolak `401 Unauthorized` (karena belum ada token / token kosong).
    - 📸 *Screenshot ini penting — bukti AUTH benar-benar berfungsi menolak akses tanpa izin.*
-2. Jalankan ulang request **Login** (langkah 1) supaya `jwt_token` terisi.
+2. Jalankan ulang request **Login** (langkah 1) supaya `jwt_token` terisi. Tab **Tests** request ini sekarang juga otomatis menyimpan `my_user_id` (ID akun kamu sendiri) — cek di Variables.
 3. Jalankan lagi **"Create Course (butuh token)"** — sekarang harus berhasil `200 OK`.
+   - Body-nya pakai `teacher_id: {{my_user_id}}` — **wajib diri sendiri**, gak bisa pakai ID guru lain (lihat Langkah 3b).
+   - Tab Tests-nya otomatis simpan ID course barumu ke variable `my_course_id`.
    - 📸 *Screenshot response sukses, sandingkan dengan screenshot 401 sebelumnya sebagai bukti perbandingan.*
+
+### Langkah 3b — Coba validasi OTORISASI (ownership check)
+
+> ⚠️ **UPDATE KEAMANAN PENTING:** sebelumnya endpoint manajemen course/content/comment/user di sini cuma syaratnya "sudah login" — TIDAK ada cek apakah kamu beneran pemilik/pengajar course itu. Siapapun yang baru daftar bisa ubah/hapus course MANAPUN, bahkan hapus akun user lain (yang lewat relasi `CASCADE` bisa ikut menghapus semua course yang diajar user itu). Ini sudah diperbaiki — sekarang wajib jadi pengajar course yang bersangkutan (atau diri sendiri, untuk hapus akun).
+
+1. Jalankan **"Update Course (butuh token)"** — pakai `{{my_course_id}}` (course yang KAMU buat sendiri di Langkah 3) → harus `200 OK`.
+2. Ganti dulu variable `my_course_id` (sementara) ke ID course **milik orang lain** (cek lewat "List Courses", cari course yang bukan kamu buat) → jalankan **"Update Course"** atau **"Delete Course"** lagi → harus ditolak `403 Forbidden`.
+   - 📸 *Screenshot 403 ini — bukti ownership check jalan.*
+3. Jangan lupa balikin lagi variable `my_course_id` ke nilai aslinya (atau jalankan ulang "Create Course" buat dapat yang baru) sebelum lanjut ke langkah berikutnya.
+4. (Opsional) Coba juga **"Delete User"** (folder Users) dengan `user_id` punya akun LAIN (bukan `{{my_user_id}}`) → harus `403 Forbidden`. Akun sendiri tetap aman, akun orang lain juga aman dari penghapusan sembarangan.
 
 ### Langkah 4 — Coba fitur Throttling (rate-limit)
 
@@ -96,6 +108,7 @@ Supaya gampang nyusun dokumen nanti, kumpulin screenshot ini:
 - [ ] List courses publik (200)
 - [ ] Create course **tanpa** token (401) — bukti AUTH jalan
 - [ ] Create course **dengan** token (200) — perbandingan
+- [ ] Update/Delete course **milik orang lain** (403) — bukti ownership check jalan
 - [ ] Comment ke-11 kena rate-limit (429)
 - [ ] Enrollment ditolak karena kursus penuh (400)
 - [ ] Kalkulator dibagi nol → 400 rapi (bukan 500)
